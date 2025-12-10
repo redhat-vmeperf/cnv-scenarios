@@ -1,6 +1,6 @@
 # CNV Scenarios - Kube-Burner
 
-This directory contains standardized test scenarios for OpenShift Virtualization (CNV) workloads, organized by test category and designed for consistency and reusability.
+This repository contains test scenarios for OpenShift Virtualization (CNV) workloads
 
 ## Requirements
 
