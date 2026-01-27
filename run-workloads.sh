@@ -462,6 +462,18 @@ run_single_test() {
         exit ${PIPESTATUS[0]}
     ) || exit_code=$?
     
+    # Move kube-burner UUID logs from test directory to results directory
+    # (kube-burner creates logs like kube-burner-<uuid>.log in the working directory)
+    local uuid_logs=$(find "$test_dir" -maxdepth 1 -name "kube-burner-*.log" -type f 2>/dev/null)
+    if [[ -n "$uuid_logs" ]]; then
+        echo "$uuid_logs" | while read -r log_file; do
+            if [[ -f "$log_file" ]]; then
+                mv "$log_file" "${results_path}/" 2>/dev/null || true
+            fi
+        done
+        logmain INFO "[$test_name] Moved kube-burner UUID logs to results directory"
+    fi
+    
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
