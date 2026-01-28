@@ -1,0 +1,16 @@
+# Kube-burner runtime logs (created with UUID per run)
+**/kube-burner-*.log
+
+# Test results (stored in /tmp)
+/tmp/kube-burner-results/
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
