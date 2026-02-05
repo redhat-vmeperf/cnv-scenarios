@@ -15,7 +15,7 @@
 #   DISKCOUNT=20 ./run-test.sh           # WRONG: uppercase won't work
 #
 # Advanced - direct kube-burner (requires manual timestamp):
-#   runTimestamp=$(date +"run-%Y%m%d-%H%M%S") diskCount=20 kube-burner init --config=disk-hotplug-test.yml --user-data=vars.yaml
+#   runTimestamp=$(date +"run-%Y%m%d-%H%M%S") diskCount=20 kube-burner init --config=disk-hotplug-test.yml --user-data=vars.yml
 #
 
 # Test Configuration
