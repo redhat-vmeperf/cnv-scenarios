@@ -89,6 +89,9 @@ jobs:
   - objectTemplate: templates/vm.yaml
     replicas: {{ $vmCount }}
     waitOptions:
+      customStatusPaths:
+      - key: '((.conditions // [])[] | select(.type == "Ready")).status'
+        value: "True"
       labelSelector:
         {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}
     inputVars:

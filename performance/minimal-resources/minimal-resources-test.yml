@@ -64,6 +64,9 @@ jobs:
   - objectTemplate: vm-minimal-resources.yml
     replicas: {{ $vmCount }}
     waitOptions:
+      customStatusPaths:
+      - key: '((.conditions // [])[] | select(.type == "Ready")).status'
+        value: "True"
       labelSelector:
         {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}
     inputVars:

@@ -124,6 +124,9 @@ jobs:
   - objectTemplate: vm-per-host-template.yml
     replicas: {{ $vmsPerNamespace }}
     waitOptions:
+      customStatusPaths:
+      - key: '((.conditions // [])[] | select(.type == "Ready")).status'
+        value: "True"
       labelSelector:
         {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}
     inputVars:
@@ -144,13 +147,14 @@ jobs:
       vmLabels:
         {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}
 
-{{ if not .skipVmShutdown }}
-# Shutdown VMs (all namespaces at once via label selector)
+# Shutdown VMs in batches (across all namespaces)
 - name: shutdown-vms
   jobType: kubevirt
   qps: {{ .qpsShutdown }}
   burst: {{ .burstShutdown }}
-  jobIterations: 1
+  jobIterations: {{ $namespaceCount }}
+  namespacedIterations: true
+  namespace: {{ $namespacePrefix }}
   maxWaitTimeout: 30m
   objectDelay: 10s
   objectWait: true
@@ -178,15 +182,15 @@ jobs:
       name: sleep-job
       counter: {{ .counter | toString }}
       sleepDuration: "120" # 2 minutes in seconds
-{{ end }}
 
-{{ if not .skipVmRestart }}
-# Start VMs (all namespaces at once via label selector)
+# Start VMs as fast as possible (across all namespaces)
 - name: startup-vms
   jobType: kubevirt
   qps: {{ .qpsStartup }}
   burst: {{ .burstStartup }}
-  jobIterations: 1
+  jobIterations: {{ $namespaceCount }}
+  namespacedIterations: true
+  namespace: {{ $namespacePrefix }}
   maxWaitTimeout: {{ .maxWaitTimeout }}
   objectDelay: 1s
   objectWait: true
@@ -195,4 +199,3 @@ jobs:
   - kubeVirtOp: start
     labelSelector:
       {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}
-{{ end }}
