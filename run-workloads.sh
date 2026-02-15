@@ -347,6 +347,32 @@ cleanup_per_host_density() {
     return 0
 }
 
+# Generic cleanup: delete the test namespace after completion
+# Reads testNamespace from the resolved vars file and deletes it.
+# Respects the 'cleanup' env var (defaults to true).
+# Args: $1 = vars_file
+cleanup_test_namespace() {
+    local vars_file="$1"
+    local do_cleanup="${cleanup:-$(get_yaml_value "cleanup" "$vars_file" "true")}"
+    local ns="$(get_yaml_value "testNamespace" "$vars_file" "")"
+
+    if [[ "$do_cleanup" != "true" ]]; then
+        logmain INFO "Cleanup disabled - namespace preserved: $ns"
+        return 0
+    fi
+
+    if [[ -z "$ns" ]]; then
+        logmain WARN "No testNamespace found in vars file, skipping cleanup"
+        return 0
+    fi
+
+    logmain INFO "Cleanup enabled - deleting namespace: $ns"
+    kubectl delete ns "$ns" --wait=false 2>/dev/null && \
+        logmain INFO "Namespace $ns deletion initiated" || \
+        logmain WARN "Namespace $ns not found or already deleted"
+    return 0
+}
+
 # Dispatcher for test-specific cleanup
 # Args: $1 = test_name, $2 = vars_file
 run_cleanup() {
@@ -358,8 +384,8 @@ run_cleanup() {
             cleanup_per_host_density "$vars_file"
             ;;
         *)
-            # No special cleanup needed
-            return 0
+            # Generic cleanup: delete the test namespace
+            cleanup_test_namespace "$vars_file"
             ;;
     esac
 }
