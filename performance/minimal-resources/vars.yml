@@ -34,7 +34,8 @@ minMemory: "64Mi"                          # Minimal memory allocation (64 MiB)
 minStorage: "100Mi"                        # Minimal storage size (100 MiB)
 
 # Storage Configuration
-storageClassName: "ocs-storagecluster-ceph-rbd"  # Storage class for PVC provisioning
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"  # Storage class for PVC provisioning
+volumeMode: "Block"                        # Volume mode (Block or Filesystem)
 
 # VM Image Configuration
 osType: "cirros"                           # Operating system type (cirros is lightweight)

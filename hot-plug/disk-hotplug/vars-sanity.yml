@@ -23,7 +23,7 @@ memory: "512Mi"
 
 # Storage Configuration
 storage: "10Gi"
-storageClassName: "ocs-storagecluster-ceph-rbd"
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"
 volumeMode: "Block"
 
 # VM Image Configuration
@@ -44,7 +44,7 @@ counter: 1
 
 # Timeout Configuration (reduced for sanity)
 maxWaitTimeout: "5m"
-jobPause: "1m"
+jobPause: "10s"
 hotplugTimeout: "5m"
 
 # Node Targeting Configuration (optional)

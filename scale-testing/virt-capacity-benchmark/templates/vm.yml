@@ -29,6 +29,7 @@ spec:
       storage:
         accessModes:
         - {{ $accessMode }}
+        volumeMode: Block
         storageClassName: {{ .storageClassName }}
         resources:
           requests:
@@ -46,6 +47,7 @@ spec:
       storage:
         accessModes:
         - {{ $accessMode }}
+        volumeMode: Block
         storageClassName: {{ $storageClassName }}
         resources:
           requests:

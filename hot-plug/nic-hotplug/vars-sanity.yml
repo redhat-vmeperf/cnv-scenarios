@@ -23,14 +23,14 @@ memory: "512Mi"
 
 # Storage Configuration (minimal)
 storage: "10Gi"
-storageClassName: "ocs-storagecluster-ceph-rbd"
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"
 
 # Test Execution Control
 counter: 1
 
 # Timeout Configuration (reduced for sanity)
 maxWaitTimeout: "5m"
-jobPause: "1m"
+jobPause: "10s"
 
 # SSH Configuration for VM Access
 privateKey: '/home/kni/.ssh/id_rsa'

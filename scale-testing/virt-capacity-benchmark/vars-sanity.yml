@@ -27,7 +27,7 @@ privateKey: '/home/kni/.ssh/id_rsa'
 publicKey: '/home/kni/.ssh/id_rsa.pub'
 
 # Storage Configuration
-storageClassName: ocs-storagecluster-ceph-rbd
+storageClassName: ocs-storagecluster-ceph-rbd-virtualization
 
 # Job Control (skip optional jobs for sanity)
 skip-migration-job: true

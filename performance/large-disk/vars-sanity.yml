@@ -18,8 +18,8 @@ memory: "512Mi"
 # Storage Configuration (minimal large disk)
 rootStorage: "10Gi"
 largeDiskSize: "10Gi"
-storageClassName: "ocs-storagecluster-ceph-rbd"
-volumeMode: "Filesystem"
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"
+volumeMode: "Block"
 
 # VM Image Configuration
 baseImage: "quay.io/containerdisks/fedora:41"
@@ -39,7 +39,7 @@ vmRunning: true
 
 # Timeout Configuration (reduced for sanity)
 maxWaitTimeout: "5m"
-jobPause: "1m"
+jobPause: "10s"
 
 # Node Targeting Configuration (optional)
 nodeSelector: ""

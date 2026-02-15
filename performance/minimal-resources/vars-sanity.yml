@@ -17,7 +17,7 @@ minMemory: "128Mi"
 minStorage: "1Gi"
 
 # Storage Configuration
-storageClassName: "ocs-storagecluster-ceph-rbd"
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"
 
 # VM Image Configuration
 osType: "cirros"
@@ -28,7 +28,7 @@ vmRunning: true
 
 # Timeout Configuration (reduced for sanity)
 maxWaitTimeout: "5m"
-jobPause: "1m"
+jobPause: "10s"
 
 # Node Targeting Configuration (optional)
 nodeSelector: ""

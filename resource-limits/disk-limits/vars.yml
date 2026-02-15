@@ -36,7 +36,7 @@ cpuCores: 16                               # CPU cores allocated to each VM
 memory: "32Gi"                             # Memory allocation per VM
 
 # Storage Configuration
-storageClassName: "ocs-storagecluster-ceph-rbd"  # Storage class for PVC provisioning
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"  # Storage class for PVC provisioning
 volumeMode: "Block"                        # Volume mode (Block or Filesystem)
 
 # VM Image Configuration

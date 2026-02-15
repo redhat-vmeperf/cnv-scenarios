@@ -54,7 +54,7 @@ vmUser: alpine                          # SSH username for Alpine Linux VMs
 # Storage Configuration
 sourceStorageSize: 256                   # Source DataVolume size in MiB for VM cloning
 vmStorageSize: 256                       # Individual VM disk size in MiB
-storageClassName: ocs-storagecluster-ceph-rbd  # Storage class for PVC provisioning
+storageClassName: ocs-storagecluster-ceph-rbd-virtualization  # Storage class for PVC provisioning
 
 # VM Resource Allocation
 vmCpuCores: 100                        # VM CPU cores (deprecated, use vmCpuRequest/vmCpuLimit)

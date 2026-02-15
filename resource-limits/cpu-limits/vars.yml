@@ -35,7 +35,8 @@ memory: "2Gi"                              # Memory allocation per VM
 storage: "10Gi"                            # Storage size for VM disk
 
 # Storage Configuration
-storageClassName: "ocs-storagecluster-ceph-rbd"  # Storage class for PVC provisioning
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"  # Storage class for PVC provisioning
+volumeMode: "Block"                        # Volume mode (Block or Filesystem)
 
 # VM Image Configuration
 imageUrl: "https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-42-1.1.x86_64.qcow2"  # Fedora cloud image URL

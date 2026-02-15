@@ -35,7 +35,8 @@ cpuCores: 16                               # CPU cores allocated to each VM
 
 # Storage Configuration
 storage: "20Gi"                            # Storage size for VM disk
-storageClassName: "ocs-storagecluster-ceph-rbd"  # Storage class for PVC provisioning
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"  # Storage class for PVC provisioning
+volumeMode: "Block"                        # Volume mode (Block or Filesystem)
 
 # Test Execution Control
 counter: 1                                 # Test iteration counter (0 triggers cleanup)
