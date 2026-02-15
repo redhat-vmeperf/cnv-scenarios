@@ -24,7 +24,7 @@ max_ssh_retries: 8                      # ~2 minutes max wait
 # Storage Configuration (minimal)
 sourceStorageSize: 5120
 vmStorageSize: 5120
-storageClassName: ocs-storagecluster-ceph-rbd
+storageClassName: ocs-storagecluster-ceph-rbd-virtualization
 
 # VM Resource Allocation (minimal)
 vmCpuCores: 100
