@@ -23,7 +23,7 @@ memory: "512Mi"
 
 # Storage Configuration
 storage: "10Gi"
-storageClassName: "ocs-storagecluster-ceph-rbd"
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"
 volumeMode: "Block"
 
 # VM Image Configuration

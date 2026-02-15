@@ -19,8 +19,8 @@ highMemory: "1Gi"
 
 # Storage Configuration (minimal)
 storage: "10Gi"
-storageClassName: "ocs-storagecluster-ceph-rbd"
-volumeMode: "Filesystem"
+storageClassName: "ocs-storagecluster-ceph-rbd-virtualization"
+volumeMode: "Block"
 
 # VM Image Configuration
 baseImage: "quay.io/containerdisks/fedora:41"
