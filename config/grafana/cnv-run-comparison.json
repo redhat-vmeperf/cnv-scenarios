@@ -61,6 +61,11 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "cluster", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "operators", "format": "json", "replace": false } },
+        { "id": "extractFields", "options": { "source": "nodes", "format": "json", "replace": false } },
+        { "id": "extractFields", "options": { "source": "testConfig", "format": "json", "replace": false } },
         {
           "id": "organize",
           "options": {
@@ -69,42 +74,52 @@
               "_index": true,
               "_type": true,
               "metricName": true,
-              "nodes.workerDetails": true,
-              "storage.classes": true,
-              "testConfig.varsFile": true
+              "highlight": true,
+              "sort": true,
+              "nodes": true,
+              "operators": true,
+              "storage": true,
+              "testConfig": true,
+              "workerDetails": true,
+              "apiUrl": true,
+              "clusterId": true,
+              "hcoVersion": true,
+              "sriovVersion": true,
+              "nmstateVersion": true,
+              "varsFile": true,
+              "masters": true,
+              "total": true
             },
             "indexByName": {
               "testName": 0,
               "testMode": 1,
               "uuid": 2,
               "runTimestamp": 3,
-              "cluster.ocpVersion": 4,
-              "cluster.platform": 5,
-              "cluster.networkType": 6,
-              "operators.cnvVersion": 7,
-              "operators.odfVersion": 8,
-              "nodes.workers": 9,
-              "testConfig.vmCount": 10,
-              "testConfig.cpuCores": 11,
-              "testConfig.memory": 12,
-              "testConfig.storage": 13,
-              "testConfig.storageClassName": 14
+              "ocpVersion": 4,
+              "platform": 5,
+              "networkType": 6,
+              "cnvVersion": 7,
+              "odfVersion": 8,
+              "workers": 9,
+              "vmCount": 10,
+              "cpuCores": 11,
+              "memory": 12,
+              "storageClassName": 13
             },
             "renameByName": {
               "testName": "Test",
               "testMode": "Mode",
               "runTimestamp": "Run ID",
-              "cluster.ocpVersion": "OCP",
-              "cluster.platform": "Platform",
-              "cluster.networkType": "Network",
-              "operators.cnvVersion": "CNV",
-              "operators.odfVersion": "ODF",
-              "nodes.workers": "Workers",
-              "testConfig.vmCount": "VMs",
-              "testConfig.cpuCores": "CPUs",
-              "testConfig.memory": "Memory",
-              "testConfig.storage": "Storage",
-              "testConfig.storageClassName": "SC"
+              "ocpVersion": "OCP",
+              "platform": "Platform",
+              "networkType": "Network",
+              "cnvVersion": "CNV",
+              "odfVersion": "ODF",
+              "workers": "Workers",
+              "vmCount": "VMs",
+              "cpuCores": "CPUs",
+              "memory": "Memory",
+              "storageClassName": "SC"
             }
           }
         }
@@ -143,6 +158,11 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "cluster", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "operators", "format": "json", "replace": false } },
+        { "id": "extractFields", "options": { "source": "nodes", "format": "json", "replace": false } },
+        { "id": "extractFields", "options": { "source": "testConfig", "format": "json", "replace": false } },
         {
           "id": "organize",
           "options": {
@@ -151,42 +171,52 @@
               "_index": true,
               "_type": true,
               "metricName": true,
-              "nodes.workerDetails": true,
-              "storage.classes": true,
-              "testConfig.varsFile": true
+              "highlight": true,
+              "sort": true,
+              "nodes": true,
+              "operators": true,
+              "storage": true,
+              "testConfig": true,
+              "workerDetails": true,
+              "apiUrl": true,
+              "clusterId": true,
+              "hcoVersion": true,
+              "sriovVersion": true,
+              "nmstateVersion": true,
+              "varsFile": true,
+              "masters": true,
+              "total": true
             },
             "indexByName": {
               "testName": 0,
               "testMode": 1,
               "uuid": 2,
               "runTimestamp": 3,
-              "cluster.ocpVersion": 4,
-              "cluster.platform": 5,
-              "cluster.networkType": 6,
-              "operators.cnvVersion": 7,
-              "operators.odfVersion": 8,
-              "nodes.workers": 9,
-              "testConfig.vmCount": 10,
-              "testConfig.cpuCores": 11,
-              "testConfig.memory": 12,
-              "testConfig.storage": 13,
-              "testConfig.storageClassName": 14
+              "ocpVersion": 4,
+              "platform": 5,
+              "networkType": 6,
+              "cnvVersion": 7,
+              "odfVersion": 8,
+              "workers": 9,
+              "vmCount": 10,
+              "cpuCores": 11,
+              "memory": 12,
+              "storageClassName": 13
             },
             "renameByName": {
               "testName": "Test",
               "testMode": "Mode",
               "runTimestamp": "Run ID",
-              "cluster.ocpVersion": "OCP",
-              "cluster.platform": "Platform",
-              "cluster.networkType": "Network",
-              "operators.cnvVersion": "CNV",
-              "operators.odfVersion": "ODF",
-              "nodes.workers": "Workers",
-              "testConfig.vmCount": "VMs",
-              "testConfig.cpuCores": "CPUs",
-              "testConfig.memory": "Memory",
-              "testConfig.storage": "Storage",
-              "testConfig.storageClassName": "SC"
+              "ocpVersion": "OCP",
+              "platform": "Platform",
+              "networkType": "Network",
+              "cnvVersion": "CNV",
+              "odfVersion": "ODF",
+              "workers": "Workers",
+              "vmCount": "VMs",
+              "cpuCores": "CPUs",
+              "memory": "Memory",
+              "storageClassName": "SC"
             }
           }
         }
@@ -221,7 +251,9 @@
       "id": 3,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "tooltip": { "mode": "multi" },
+        "showHeader": true,
+        "footer": { "show": false, "reducer": ["sum"], "fields": "" }
       },
       "title": "Run A: VMI Latency Quantiles",
       "type": "table",
@@ -235,6 +267,7 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -249,7 +282,9 @@
               "timestamp": true,
               "min": true,
               "max": true,
-              "avg": true
+              "avg": true,
+              "highlight": true,
+              "sort": true
             },
             "indexByName": { "quantileName": 0, "P50": 1, "P95": 2, "P99": 3 },
             "renameByName": {
@@ -284,7 +319,9 @@
       "id": 4,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "tooltip": { "mode": "multi" },
+        "showHeader": true,
+        "footer": { "show": false, "reducer": ["sum"], "fields": "" }
       },
       "title": "Run B: VMI Latency Quantiles",
       "type": "table",
@@ -298,6 +335,7 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -312,7 +350,9 @@
               "timestamp": true,
               "min": true,
               "max": true,
-              "avg": true
+              "avg": true,
+              "highlight": true,
+              "sort": true
             },
             "indexByName": { "quantileName": 0, "P50": 1, "P95": 2, "P99": 3 },
             "renameByName": {
@@ -359,6 +399,7 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -373,7 +414,9 @@
               "jobIteration": true,
               "replica": true,
               "timestamp": true,
-              "namespace": true
+              "namespace": true,
+              "highlight": true,
+              "sort": true
             },
             "indexByName": { "pvcName": 0, "storageClass": 1, "size": 2, "pendingLatency": 3, "bindingLatency": 4, "lostLatency": 5 },
             "renameByName": {
@@ -414,6 +457,7 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -428,7 +472,9 @@
               "jobIteration": true,
               "replica": true,
               "timestamp": true,
-              "namespace": true
+              "namespace": true,
+              "highlight": true,
+              "sort": true
             },
             "indexByName": { "pvcName": 0, "storageClass": 1, "size": 2, "pendingLatency": 3, "bindingLatency": 4, "lostLatency": 5 },
             "renameByName": {
@@ -475,6 +521,8 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "operators", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -492,14 +540,16 @@
               "cluster": true,
               "nodes": true,
               "storage": true,
-              "testConfig": true
+              "testConfig": true,
+              "highlight": true,
+              "sort": true
             },
             "renameByName": {
-              "operators.cnvVersion": "CNV",
-              "operators.hcoVersion": "HCO",
-              "operators.odfVersion": "ODF",
-              "operators.sriovVersion": "SR-IOV",
-              "operators.nmstateVersion": "NMState"
+              "cnvVersion": "CNV",
+              "hcoVersion": "HCO",
+              "odfVersion": "ODF",
+              "sriovVersion": "SR-IOV",
+              "nmstateVersion": "NMState"
             }
           }
         }
@@ -531,6 +581,8 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "operators", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -548,14 +600,16 @@
               "cluster": true,
               "nodes": true,
               "storage": true,
-              "testConfig": true
+              "testConfig": true,
+              "highlight": true,
+              "sort": true
             },
             "renameByName": {
-              "operators.cnvVersion": "CNV",
-              "operators.hcoVersion": "HCO",
-              "operators.odfVersion": "ODF",
-              "operators.sriovVersion": "SR-IOV",
-              "operators.nmstateVersion": "NMState"
+              "cnvVersion": "CNV",
+              "hcoVersion": "HCO",
+              "odfVersion": "ODF",
+              "sriovVersion": "SR-IOV",
+              "nmstateVersion": "NMState"
             }
           }
         }
@@ -594,13 +648,8 @@
         }
       ],
       "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "source": "nodes.workerDetails",
-            "format": "json"
-          }
-        },
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "nodes", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -619,16 +668,18 @@
               "runTimestamp": true,
               "timestamp": true,
               "kubeBurnerVersion": true,
-              "nodes.total": true,
-              "nodes.masters": true,
-              "nodes.workers": true
+              "highlight": true,
+              "sort": true,
+              "masters": true,
+              "total": true
+            },
+            "indexByName": {
+              "workers": 0,
+              "workerDetails": 1
             },
             "renameByName": {
-              "name": "Node",
-              "cpuModel": "CPU",
-              "cpuCores": "Cores",
-              "memoryGiB": "RAM (GiB)",
-              "architecture": "Arch"
+              "workers": "Worker Count",
+              "workerDetails": "Worker Details (JSON)"
             }
           }
         }
@@ -660,13 +711,8 @@
         }
       ],
       "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "source": "nodes.workerDetails",
-            "format": "json"
-          }
-        },
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
+        { "id": "extractFields", "options": { "source": "nodes", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -685,16 +731,18 @@
               "runTimestamp": true,
               "timestamp": true,
               "kubeBurnerVersion": true,
-              "nodes.total": true,
-              "nodes.masters": true,
-              "nodes.workers": true
+              "highlight": true,
+              "sort": true,
+              "masters": true,
+              "total": true
+            },
+            "indexByName": {
+              "workers": 0,
+              "workerDetails": 1
             },
             "renameByName": {
-              "name": "Node",
-              "cpuModel": "CPU",
-              "cpuCores": "Cores",
-              "memoryGiB": "RAM (GiB)",
-              "architecture": "Arch"
+              "workers": "Worker Count",
+              "workerDetails": "Worker Details (JSON)"
             }
           }
         }
@@ -735,6 +783,7 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -751,7 +800,9 @@
               "timestamp": true,
               "podName": true,
               "vmiName": true,
-              "namespace": true
+              "namespace": true,
+              "highlight": true,
+              "sort": true
             },
             "indexByName": {
               "vmName": 0,
@@ -803,6 +854,7 @@
         }
       ],
       "transformations": [
+        { "id": "extractFields", "options": { "source": "A", "format": "json", "replace": true } },
         {
           "id": "organize",
           "options": {
@@ -819,7 +871,9 @@
               "timestamp": true,
               "podName": true,
               "vmiName": true,
-              "namespace": true
+              "namespace": true,
+              "highlight": true,
+              "sort": true
             },
             "indexByName": {
               "vmName": 0,
