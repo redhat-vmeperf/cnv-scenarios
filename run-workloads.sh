@@ -141,6 +141,23 @@ get_yaml_value() {
     echo "$default"
 }
 
+refresh_prometheus_token() {
+    if [[ -z "$PROM" ]]; then
+        PROM="https://$(oc get route -n openshift-monitoring prometheus-k8s -o jsonpath='{.spec.host}' 2>/dev/null)" || true
+        if [[ -n "$PROM" ]]; then
+            logmain INFO "Prometheus URL detected: $PROM"
+        fi
+    fi
+    if [[ -z "$PROM_TOKEN_MANUAL" ]]; then
+        if [[ -n "$PROM" ]]; then
+            PROM_TOKEN="$(oc create token -n openshift-monitoring prometheus-k8s --duration=1h 2>/dev/null)" || true
+            if [[ -n "$PROM_TOKEN" ]]; then
+                logmain DEBUG "Refreshed Prometheus token"
+            fi
+        fi
+    fi
+}
+
 # Parse test registry entry
 parse_registry() {
     local entry="$1"
@@ -437,14 +454,20 @@ run_single_test() {
     local results_path="${RESULTS_BASE}/${test_name}/${run_timestamp}"
     mkdir -p "$results_path"
     
-    # Create temporary vars file with TIMESTAMP replaced and correct paths
+    refresh_prometheus_token
     local unique_suffix="$(date +%Y%m%d-%H%M%S)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)"
     local temp_vars="${results_path}/vars-${test_name}-${MODE}.${ext}"
     sed -e "s/TIMESTAMP/${unique_suffix}/g" \
         -e "s|^resultsPath:.*|resultsPath: \"${RESULTS_BASE}/${test_name}\"|" \
         -e "s|^runTimestamp:.*|runTimestamp: \"${run_timestamp}\"|" \
         "$vars_file" > "$temp_vars"
-    
+    if [[ -n "$PROM" ]]; then
+        sed -i "s|^PROM:.*|PROM: \"${PROM}\"|" "$temp_vars"
+    fi
+    if [[ -n "$PROM_TOKEN" ]]; then
+        sed -i "s|^PROM_TOKEN:.*|PROM_TOKEN: \"${PROM_TOKEN}\"|" "$temp_vars"
+    fi
+
     logmain INFO "[$test_name] Starting test"
     logmain INFO "[$test_name] Mode: $MODE"
     logmain INFO "[$test_name] Config: $config_file"
@@ -552,6 +575,22 @@ run_single_test() {
             else
                 logmain INFO "[$test_name] WARNING: Validation indexing failed (non-fatal)"
             fi
+        fi
+
+        if [[ -n "$PROM" && -n "$PROM_TOKEN" ]]; then
+            logmain INFO "[$test_name] Collecting Prometheus alerts..."
+            local test_start_iso=$(date -d "@$start_time" -Iseconds 2>/dev/null || date -r "$start_time" -Iseconds 2>/dev/null)
+            local test_end_iso=$(date -Iseconds)
+            "${SCRIPT_DIR}/config/scripts/alert-collector.sh" \
+                --uuid "$kb_uuid" \
+                --test-name "$test_name" \
+                --start-time "$test_start_iso" \
+                --end-time "$test_end_iso" \
+                --prom-url "$PROM" \
+                --prom-token "$PROM_TOKEN" \
+                --es-server "$es_server" \
+                --results-dir "$results_path" || true
+            logmain INFO "[$test_name] Alert collection complete"
         fi
     else
         logmain INFO "[$test_name] Skipping metadata collection (no kube-burner UUID found)"
@@ -979,7 +1018,8 @@ main() {
     logmain INFO "Starting VME Test Suite"
     logmain INFO "Mode: $MODE | Execution: $EXECUTION | Tests: ${tests_to_run[*]}"
     logmain INFO "Main log: $MAIN_LOG"
-    
+    refresh_prometheus_token
+
     # Run tests
     local exit_code=0
     if [[ ${#tests_to_run[@]} -eq 1 ]]; then

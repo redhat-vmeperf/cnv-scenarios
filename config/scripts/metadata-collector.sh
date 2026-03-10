@@ -206,12 +206,24 @@ if [[ -n "$VARS_FILE" && -f "$VARS_FILE" ]]; then
 
     tc_cpuCores=$(get_yaml_value "cpuCores" "$VARS_FILE" "")
     if [[ -z "$tc_cpuCores" || "$tc_cpuCores" == "0" ]]; then
-        tc_cpuCores=$(get_yaml_value "vmCpuRequest" "$VARS_FILE" "0")
+        tc_cpuCores=$(get_yaml_value "vmCpuRequest" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_cpuCores" || "$tc_cpuCores" == "0" ]]; then
+        tc_cpuCores=$(get_yaml_value "vmCpuCores" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_cpuCores" || "$tc_cpuCores" == "0" ]]; then
+        tc_cpuCores=$(get_yaml_value "minCpu" "$VARS_FILE" "0")
     fi
 
     tc_memory=$(get_yaml_value "memory" "$VARS_FILE" "")
     if [[ -z "$tc_memory" ]]; then
         tc_memory=$(get_yaml_value "memorySize" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_memory" ]]; then
+        tc_memory=$(get_yaml_value "highMemory" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_memory" ]]; then
+        tc_memory=$(get_yaml_value "minMemory" "$VARS_FILE" "")
     fi
     if [[ -z "$tc_memory" ]]; then
         tc_memory=$(get_yaml_value "vmMemory" "$VARS_FILE" "unknown")
@@ -220,6 +232,15 @@ if [[ -n "$VARS_FILE" && -f "$VARS_FILE" ]]; then
     tc_storage=$(get_yaml_value "storage" "$VARS_FILE" "")
     if [[ -z "$tc_storage" ]]; then
         tc_storage=$(get_yaml_value "diskSize" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_storage" ]]; then
+        tc_storage=$(get_yaml_value "rootStorage" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_storage" ]]; then
+        tc_storage=$(get_yaml_value "largeDiskSize" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_storage" ]]; then
+        tc_storage=$(get_yaml_value "minStorage" "$VARS_FILE" "")
     fi
     if [[ -z "$tc_storage" ]]; then
         tc_storage=$(get_yaml_value "storageSize" "$VARS_FILE" "unknown")
@@ -232,6 +253,39 @@ else
     tc_memory="unknown"
     tc_storage="unknown"
     tc_storageClassName="unknown"
+fi
+
+runtimeConfig="{}"
+if [[ -n "$VARS_FILE" && -f "$VARS_FILE" ]]; then
+    runtimeConfig=$(python3 -c "
+import json, sys
+try:
+    import yaml
+    with open(sys.argv[1]) as f:
+        d = yaml.safe_load(f) or {}
+except ImportError:
+    import re
+    d = {}
+    with open(sys.argv[1]) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and ':' in line:
+                k, _, v = line.partition(':')
+                k = k.strip()
+                v = v.strip().strip('\"').strip(\"'\")
+                if v and k:
+                    d[k] = v
+sensitive = {'PROM_TOKEN', 'privateKey', 'password', 'token', 'secret'}
+flat = {}
+for k, v in d.items():
+    if k in sensitive or 'token' in k.lower() or 'password' in k.lower():
+        continue
+    if isinstance(v, (list, dict)):
+        flat[k] = json.dumps(v)
+    else:
+        flat[k] = str(v)
+json.dump(flat, sys.stdout)
+" "$VARS_FILE" 2>/dev/null) || runtimeConfig="{}"
 fi
 
 # =============================================================================
@@ -351,6 +405,7 @@ jq -n \
     --arg memory "$tc_memory" \
     --arg storage "$tc_storage" \
     --arg storageClassName "$tc_storageClassName" \
+    --argjson runtimeConfig "$runtimeConfig" \
     --argjson valTotal "$val_total" \
     --argjson valPassed "$val_passed" \
     --argjson valFailed "$val_failed" \
@@ -400,6 +455,7 @@ jq -n \
             storage: $storage,
             storageClassName: $storageClassName
         },
+        runtimeConfig: $runtimeConfig,
         validationSummary: {
             totalPhases: $valTotal,
             passed: $valPassed,

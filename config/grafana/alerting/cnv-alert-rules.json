@@ -1,0 +1,226 @@
+{
+  "_note": "Datasource UIDs: Replace DS_CNV_ES and DS_CNV_METRICS with your actual Grafana Elasticsearch datasource UIDs. DS_CNV_ES should query cnv-metadata and cnv-validation (use index pattern cnv-metadata,cnv-validation or cnv-*). DS_CNV_METRICS should query cnv-sanity-* for metrics indices.",
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "CNV Test Alerts",
+      "folder": "CNV",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "cnv-alert-test-failure",
+          "title": "CNV Test Failure",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "DS_CNV_ES",
+              "model": {
+                "query": "metricName.keyword: metadata AND testResult.keyword: FAILURE",
+                "metrics": [{"type": "count", "id": "1"}],
+                "bucketAggs": [{"type": "date_histogram", "field": "timestamp", "id": "2", "settings": {"interval": "5m"}}],
+                "timeField": "timestamp"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {"mode": "dropNN"}
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [{"evaluator": {"type": "gt", "params": [0]}}]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "description": "A CNV test run has failed. Check the Run Detail dashboard for details.",
+            "summary": "CNV test failure detected"
+          },
+          "labels": {
+            "severity": "critical",
+            "team": "cnv-perf"
+          }
+        },
+        {
+          "uid": "cnv-alert-duration-regression",
+          "title": "CNV Duration Regression",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {"from": 3600, "to": 0},
+              "datasourceUid": "DS_CNV_ES",
+              "model": {
+                "query": "metricName.keyword: metadata",
+                "metrics": [{"type": "avg", "id": "1", "field": "durationSeconds"}],
+                "bucketAggs": [{"type": "date_histogram", "field": "timestamp", "id": "2", "settings": {"interval": "1h"}}],
+                "timeField": "timestamp"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {"from": 3600, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {"mode": "dropNN"}
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {"from": 3600, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [{"evaluator": {"type": "gt", "params": [3600]}}]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "description": "Average test run duration in the evaluation window exceeds 1 hour (3600s). Adjust the threshold in the rule if needed. May indicate VMI boot latency degradation or infrastructure issues.",
+            "summary": "CNV run duration exceeds threshold"
+          },
+          "labels": {
+            "severity": "warning",
+            "team": "cnv-perf"
+          }
+        },
+        {
+          "uid": "cnv-alert-validation-failure",
+          "title": "CNV Validation Failure",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "DS_CNV_ES",
+              "model": {
+                "query": "overallStatus.keyword: FAILURE",
+                "metrics": [{"type": "count", "id": "1"}],
+                "bucketAggs": [{"type": "date_histogram", "field": "timestamp", "id": "2", "settings": {"interval": "5m"}}],
+                "timeField": "timestamp"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {"mode": "dropNN"}
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [{"evaluator": {"type": "gt", "params": [0]}}]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "description": "A CNV validation run has failed. Check the Run Detail dashboard for validation details.",
+            "summary": "CNV validation failure detected"
+          },
+          "labels": {
+            "severity": "critical",
+            "team": "cnv-perf"
+          }
+        },
+        {
+          "uid": "cnv-alert-vm-startup-degradation",
+          "title": "CNV VM Startup Degradation",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "DS_CNV_METRICS",
+              "model": {
+                "query": "metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: P99",
+                "metrics": [{"type": "avg", "id": "1", "field": "VmiRunning"}],
+                "bucketAggs": [{"type": "date_histogram", "field": "timestamp", "id": "2", "settings": {"interval": "5m"}}],
+                "timeField": "timestamp"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {"mode": "dropNN"}
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [{"evaluator": {"type": "gt", "params": [120000]}}]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "description": "P99 VMI startup (VmiRunning) latency exceeds 2 minutes (120000 ms). May indicate node or cluster resource contention.",
+            "summary": "CNV VM startup time degraded"
+          },
+          "labels": {
+            "severity": "warning",
+            "team": "cnv-perf"
+          }
+        }
+      ]
+    }
+  ]
+}
