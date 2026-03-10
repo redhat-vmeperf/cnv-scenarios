@@ -46,6 +46,12 @@
       "id": "table",
       "name": "Table",
       "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "state-timeline",
+      "name": "State timeline",
+      "version": ""
     }
   ],
   "annotations": {
@@ -72,7 +78,9 @@
   "links": [
     {
       "icon": "external link",
-      "tags": ["cnv"],
+      "tags": [
+        "cnv"
+      ],
       "title": "Run Detail",
       "tooltip": "Open Run Detail dashboard",
       "type": "link",
@@ -83,29 +91,51 @@
   "panels": [
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "id": 100,
       "title": "Trend Summary",
       "type": "row"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 70 },
-              { "color": "green", "value": 90 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
       "id": 1,
       "options": {
         "colorMode": "value",
@@ -113,7 +143,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -128,34 +160,58 @@
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "count" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform AND testResult.keyword: SUCCESS",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Pass Rate",
       "type": "stat"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           },
           "unit": "none"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
       "id": 2,
       "options": {
         "colorMode": "value",
@@ -163,7 +219,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -178,34 +236,58 @@
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "count" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Total Runs",
       "type": "stat"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "purple", "value": null }]
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
           },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
       "id": 3,
       "options": {
         "colorMode": "value",
@@ -213,7 +295,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -228,34 +312,59 @@
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "avg", "field": "durationSeconds" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "avg",
+              "field": "durationSeconds"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Avg Duration",
       "type": "stat"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "orange", "value": null }]
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
           },
           "unit": "none"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
       "id": 4,
       "options": {
         "colorMode": "value",
@@ -263,7 +372,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -275,11 +386,20 @@
         {
           "alias": "",
           "bucketAggs": [],
-          "metrics": [{ "id": "1", "type": "cardinality", "field": "cluster.clusterId.keyword" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "cardinality",
+              "field": "cluster.clusterId.keyword"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Unique Clusters",
@@ -287,16 +407,26 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
       "id": 101,
       "title": "Pass/Fail Timeline",
       "type": "row"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -307,40 +437,91 @@
             "drawStyle": "bars",
             "fillOpacity": 80,
             "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
             "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
             "spanNulls": true,
-            "stacking": { "group": "A", "mode": "normal" },
-            "thresholdsStyle": { "mode": "off" }
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "SUCCESS" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "SUCCESS"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "FAILURE" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "FAILURE"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 6 },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
       "id": 10,
       "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -349,15 +530,26 @@
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "count" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform AND testResult.keyword: SUCCESS",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         },
         {
           "alias": "FAILURE",
@@ -365,15 +557,26 @@
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "count" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform AND testResult.keyword: FAILURE",
           "refId": "B",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Pass/Fail Timeline",
@@ -381,16 +584,26 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
       "id": 102,
       "title": "Duration & Run Trends",
       "type": "row"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -401,28 +614,60 @@
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
             "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "auto",
             "spanNulls": true,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
       "id": 20,
       "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -431,25 +676,42 @@
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "avg", "field": "durationSeconds" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "avg",
+              "field": "durationSeconds"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Avg Duration Over Time",
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -460,28 +722,60 @@
             "drawStyle": "bars",
             "fillOpacity": 80,
             "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
             "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
             "spanNulls": true,
-            "stacking": { "group": "A", "mode": "normal" },
-            "thresholdsStyle": { "mode": "off" }
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
       "id": 21,
       "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
@@ -490,21 +784,37 @@
             {
               "field": "cluster.ocpVersion.keyword",
               "id": "3",
-              "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "10" },
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
               "type": "terms"
             },
             {
               "field": "timestamp",
               "id": "2",
-              "settings": { "interval": "1d", "min_doc_count": "0" },
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
               "type": "date_histogram"
             }
           ],
-          "metrics": [{ "id": "1", "type": "count" }],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "title": "Runs by OCP Version",
@@ -512,39 +822,79 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
       "id": 103,
       "title": "All Runs",
       "type": "row"
     },
     {
-      "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto",
-            "cellOptions": { "type": "auto" },
+            "cellOptions": {
+              "type": "auto"
+            },
             "inspect": false
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": ""
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Result" },
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
             "properties": [
               {
                 "id": "mappings",
                 "value": [
-                  { "options": { "SUCCESS": { "color": "green", "index": 0 } }, "type": "value" },
-                  { "options": { "FAILURE": { "color": "red", "index": 1 } }, "type": "value" }
+                  {
+                    "options": {
+                      "SUCCESS": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "FAILURE": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  }
                 ]
               }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "UUID" },
+            "matcher": {
+              "id": "byName",
+              "options": "UUID"
+            },
             "properties": [
               {
                 "id": "links",
@@ -559,36 +909,91 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Duration" },
-            "properties": [{ "id": "unit", "value": "s" }]
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
           }
         ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 22 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
       "id": 30,
       "options": {
         "cellHeight": "sm",
-        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
         "showHeader": true,
-        "sortBy": [{ "desc": true, "displayName": "Timestamp" }]
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Timestamp"
+          }
+        ]
       },
       "targets": [
         {
           "alias": "",
           "bucketAggs": [],
           "metrics": [
-            { "id": "1", "type": "raw_data", "settings": { "size": "500" } }
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "500"
+              }
+            }
           ],
           "query": "metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion AND cluster.platform.keyword: $platform",
           "refId": "A",
           "timeField": "timestamp",
-          "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" }
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
         }
       ],
       "transformations": [
-        { "id": "extractFields", "options": { "source": "cluster", "format": "json", "replace": true } },
-        { "id": "extractFields", "options": { "source": "nodes", "format": "json", "replace": false } },
-        { "id": "extractFields", "options": { "source": "testConfig", "format": "json", "replace": false } },
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "cluster",
+            "format": "json",
+            "replace": true
+          }
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "nodes",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "testConfig",
+            "format": "json",
+            "replace": false
+          }
+        },
         {
           "id": "organize",
           "options": {
@@ -635,12 +1040,18 @@
   ],
   "refresh": "",
   "schemaVersion": 39,
-  "tags": ["cnv", "explorer"],
+  "tags": [
+    "cnv",
+    "explorer"
+  ],
   "templating": {
     "list": [
       {
         "current": {},
-        "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "${DS_CNV_ES}"
+        },
         "definition": "{\"find\": \"terms\", \"field\": \"testName.keyword\", \"query\": \"metricName.keyword: metadata\"}",
         "hide": 0,
         "includeAll": false,
@@ -659,7 +1070,10 @@
       {
         "allValue": "*",
         "current": {},
-        "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "${DS_CNV_ES}"
+        },
         "definition": "{\"find\": \"terms\", \"field\": \"cluster.ocpVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
         "hide": 0,
         "includeAll": true,
@@ -678,7 +1092,10 @@
       {
         "allValue": "*",
         "current": {},
-        "datasource": { "type": "elasticsearch", "uid": "${DS_CNV_ES}" },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "${DS_CNV_ES}"
+        },
         "definition": "{\"find\": \"terms\", \"field\": \"cluster.platform.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND cluster.ocpVersion.keyword: $ocpVersion\"}",
         "hide": 0,
         "includeAll": true,
@@ -695,16 +1112,32 @@
         "type": "query"
       },
       {
-        "current": { "selected": true, "text": "P99", "value": "P99" },
+        "current": {
+          "selected": true,
+          "text": "P99",
+          "value": "P99"
+        },
         "hide": 0,
         "includeAll": false,
         "label": "Latency Percentile",
         "multi": false,
         "name": "latencyPercentile",
         "options": [
-          { "selected": true, "text": "P99", "value": "P99" },
-          { "selected": false, "text": "P95", "value": "P95" },
-          { "selected": false, "text": "P50", "value": "P50" }
+          {
+            "selected": true,
+            "text": "P99",
+            "value": "P99"
+          },
+          {
+            "selected": false,
+            "text": "P95",
+            "value": "P95"
+          },
+          {
+            "selected": false,
+            "text": "P50",
+            "value": "P50"
+          }
         ],
         "query": "P99 : P99,P95 : P95,P50 : P50",
         "queryValue": "",
@@ -713,10 +1146,34 @@
       }
     ]
   },
-  "time": { "from": "now-30d", "to": "now" },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
   "timepicker": {
-    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
-    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
   },
   "timezone": "browser",
   "title": "CNV Run Explorer",

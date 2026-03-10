@@ -19,6 +19,7 @@ UUID=""
 RESULTS_DIR=""
 ES_SERVER=""
 INDEX="cnv-validation"
+TEST_NAME_OVERRIDE=""
 
 declare -A CATEGORY_MAP=(
     ["cpu-limits"]="Resource Limits"
@@ -38,6 +39,7 @@ while [[ $# -gt 0 ]]; do
         --uuid)        UUID="$2";        shift 2 ;;
         --results-dir) RESULTS_DIR="$2"; shift 2 ;;
         --es-server)   ES_SERVER="$2";   shift 2 ;;
+        --test-name)   TEST_NAME_OVERRIDE="$2"; shift 2 ;;
         --index)       INDEX="$2";       shift 2 ;;
         *)
             echo "validation-indexer: Unknown argument: $1" >&2
@@ -66,6 +68,9 @@ failed=0
 
 for vf in "${val_files[@]}"; do
     test_name=$(jq -r '.testName // "unknown"' "$vf" 2>/dev/null)
+    if [[ -n "$TEST_NAME_OVERRIDE" ]]; then
+        test_name="$TEST_NAME_OVERRIDE"
+    fi
 
     test_category="Unknown"
     for key in "${!CATEGORY_MAP[@]}"; do
@@ -77,9 +82,10 @@ for vf in "${val_files[@]}"; do
 
     enriched=$(jq \
         --arg uuid "$UUID" \
+        --arg testName "$test_name" \
         --arg metricName "validation" \
         --arg testCategory "$test_category" \
-        '. + {uuid: $uuid, metricName: $metricName, testCategory: $testCategory}' \
+        '. + {uuid: $uuid, testName: $testName, metricName: $metricName, testCategory: $testCategory}' \
         "$vf" 2>/dev/null)
 
     if [[ -z "$enriched" ]]; then

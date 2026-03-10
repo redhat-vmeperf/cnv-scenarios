@@ -545,6 +545,7 @@ run_single_test() {
             logmain INFO "[$test_name] Indexing validation reports to ES..."
             if "${SCRIPT_DIR}/config/scripts/validation-indexer.sh" \
                 --uuid "$kb_uuid" \
+                --test-name "$test_name" \
                 --results-dir "$results_path" \
                 --es-server "$es_server"; then
                 logmain INFO "[$test_name] Validation indexing complete"

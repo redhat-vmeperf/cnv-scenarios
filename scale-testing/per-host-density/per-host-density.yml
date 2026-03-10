@@ -20,6 +20,10 @@
 {{- $namespacePrefix := .testNamespacePrefix | default "cnv-per-host-density" -}}
 {{- $nsName := $namespacePrefix -}}
 ---
+global:
+  measurements:
+  - name: vmiLatency
+  - name: pvcLatency
 metricsEndpoints:
 - indexer:
     type: local
@@ -99,9 +103,6 @@ jobs:
 # Create VMs - supports single-node or multi-node distribution
 - name: create-vms
   jobType: create
-  measurements:
-  - name: vmiLatency
-  - name: pvcLatency
   jobIterations: {{ $namespaceCount }}
   qps: {{ .qpsCreate }}
   burst: {{ .burstCreate }}

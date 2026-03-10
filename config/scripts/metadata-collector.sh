@@ -199,10 +199,32 @@ fi
 # =============================================================================
 
 if [[ -n "$VARS_FILE" && -f "$VARS_FILE" ]]; then
-    tc_vmCount=$(get_yaml_value "vmCount" "$VARS_FILE" "0")
-    tc_cpuCores=$(get_yaml_value "cpuCores" "$VARS_FILE" "0")
-    tc_memory=$(get_yaml_value "memory" "$VARS_FILE" "$(get_yaml_value "memorySize" "$VARS_FILE" "unknown")")
-    tc_storage=$(get_yaml_value "storage" "$VARS_FILE" "unknown")
+    tc_vmCount=$(get_yaml_value "vmCount" "$VARS_FILE" "")
+    if [[ -z "$tc_vmCount" || "$tc_vmCount" == "0" ]]; then
+        tc_vmCount=$(get_yaml_value "vmsPerNamespace" "$VARS_FILE" "0")
+    fi
+
+    tc_cpuCores=$(get_yaml_value "cpuCores" "$VARS_FILE" "")
+    if [[ -z "$tc_cpuCores" || "$tc_cpuCores" == "0" ]]; then
+        tc_cpuCores=$(get_yaml_value "vmCpuRequest" "$VARS_FILE" "0")
+    fi
+
+    tc_memory=$(get_yaml_value "memory" "$VARS_FILE" "")
+    if [[ -z "$tc_memory" ]]; then
+        tc_memory=$(get_yaml_value "memorySize" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_memory" ]]; then
+        tc_memory=$(get_yaml_value "vmMemory" "$VARS_FILE" "unknown")
+    fi
+
+    tc_storage=$(get_yaml_value "storage" "$VARS_FILE" "")
+    if [[ -z "$tc_storage" ]]; then
+        tc_storage=$(get_yaml_value "diskSize" "$VARS_FILE" "")
+    fi
+    if [[ -z "$tc_storage" ]]; then
+        tc_storage=$(get_yaml_value "storageSize" "$VARS_FILE" "unknown")
+    fi
+
     tc_storageClassName=$(get_yaml_value "storageClassName" "$VARS_FILE" "unknown")
 else
     tc_vmCount="0"
@@ -324,8 +346,8 @@ jq -n \
     --arg defaultStorageClass "$default_sc" \
     --argjson storageClasses "$storage_classes" \
     --arg varsFile "${VARS_FILE:-}" \
-    --argjson vmCount "${tc_vmCount}" \
-    --argjson cpuCores "${tc_cpuCores}" \
+    --arg vmCount "${tc_vmCount}" \
+    --arg cpuCores "${tc_cpuCores}" \
     --arg memory "$tc_memory" \
     --arg storage "$tc_storage" \
     --arg storageClassName "$tc_storageClassName" \
@@ -372,8 +394,8 @@ jq -n \
         },
         testConfig: {
             varsFile: $varsFile,
-            vmCount: $vmCount,
-            cpuCores: $cpuCores,
+            vmCount: ($vmCount | tonumber? // $vmCount),
+            cpuCores: ($cpuCores | tonumber? // $cpuCores),
             memory: $memory,
             storage: $storage,
             storageClassName: $storageClassName
