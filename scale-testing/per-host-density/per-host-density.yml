@@ -91,7 +91,7 @@ jobs:
     replicas: 1
     waitOptions:
       customStatusPaths:
-      - key: '.status.phase'
+      - key: '.phase'
         value: 'Succeeded'
     inputVars:
       name: per-host-source
