@@ -46,7 +46,7 @@
       "title": "Run Comparison v2",
       "tooltip": "Compare two runs side-by-side",
       "type": "link",
-      "url": "/d/cnv-run-comparison-v3/cnv-run-comparison-v3"
+      "url": "/d/cnv-run-comparison-v2/cnv-run-comparison-v2"
     }
   ],
   "panels": [
@@ -112,13 +112,15 @@
         {
           "bucketAggs": [
             {
-              "field": "timestamp",
+              "field": "jobName.keyword",
               "id": "2",
+              "type": "terms",
               "settings": {
-                "interval": "1d",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
             }
           ],
           "datasource": {
@@ -131,7 +133,7 @@
               "type": "count"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement",
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
           "refId": "A",
           "timeField": "timestamp"
         }
@@ -189,13 +191,15 @@
         {
           "bucketAggs": [
             {
-              "field": "timestamp",
+              "field": "jobName.keyword",
               "id": "2",
+              "type": "terms",
               "settings": {
-                "interval": "1d",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
             }
           ],
           "datasource": {
@@ -209,7 +213,7 @@
               "type": "avg"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement",
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
           "refId": "A",
           "timeField": "timestamp"
         }
@@ -243,7 +247,7 @@
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 8,
+        "x": 12,
         "y": 1
       },
       "id": 3,
@@ -265,29 +269,32 @@
       },
       "targets": [
         {
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "1d",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
+          "alias": "",
           "datasource": {
             "type": "elasticsearch",
             "uid": "bd58d7f2-5053-4131-a364-d10169105758"
           },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND jobName.keyword: startup-vms AND quantileName.keyword: VMIRunning",
           "metrics": [
             {
-              "field": "VmiRunning",
+              "field": "$latencyPercentile",
               "id": "1",
               "type": "avg"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
+          "bucketAggs": [
+            {
+              "field": "quantileName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "1",
+                "size": "5"
+              }
+            }
+          ],
           "refId": "A",
           "timeField": "timestamp"
         }
@@ -321,7 +328,7 @@
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 12,
+        "x": 16,
         "y": 1
       },
       "id": 4,
@@ -345,13 +352,15 @@
         {
           "bucketAggs": [
             {
-              "field": "timestamp",
+              "field": "jobName.keyword",
               "id": "2",
+              "type": "terms",
               "settings": {
-                "interval": "1d",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
             }
           ],
           "datasource": {
@@ -365,7 +374,7 @@
               "type": "max"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement",
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
           "refId": "A",
           "timeField": "timestamp"
         }
@@ -399,8 +408,8 @@
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 16,
-        "y": 1
+        "x": 0,
+        "y": 5
       },
       "id": 5,
       "options": {
@@ -478,8 +487,8 @@
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 20,
-        "y": 1
+        "x": 8,
+        "y": 5
       },
       "id": 6,
       "options": {
@@ -521,6 +530,307 @@
       ],
       "title": "Alerts Fired",
       "type": "stat"
+    },
+    {
+      "id": 32,
+      "type": "volkovlabs-echarts-panel",
+      "title": "Startup Throughput",
+      "description": "VMs successfully started per minute during the startup phase",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "count"
+            },
+            {
+              "field": "vmiRunningLatency",
+              "id": "2",
+              "type": "max"
+            },
+            {
+              "field": "vmiRunningLatency",
+              "id": "3",
+              "type": "min"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "options": {
+        "renderer": "canvas",
+        "editor": {
+          "height": 600,
+          "format": "auto"
+        },
+        "baidu": {
+          "callback": "bmapReady",
+          "key": ""
+        },
+        "editorMode": "code",
+        "gaode": {
+          "key": "",
+          "plugin": "AMap.Scale,AMap.ToolBar"
+        },
+        "google": {
+          "callback": "gmapReady",
+          "key": ""
+        },
+        "map": "none",
+        "themeEditor": {
+          "config": "{}",
+          "height": 400,
+          "name": "default"
+        },
+        "visualEditor": {
+          "code": "return {};",
+          "dataset": [],
+          "series": []
+        },
+        "getOption": "const s = context.panel.data.series[0];\nconst isDark = context.grafana.theme.isDark;\nconst textColor = isDark ? '#ccc' : '#333';\nlet count = 0, maxMs = 0, minMs = 0;\nif (s && s.fields) {\n  for (const f of s.fields) {\n    const n = (f.name || '').toLowerCase();\n    if (n.includes('count')) count = f.values[0] || 0;\n    else if (n === 'max' || n.includes('max')) maxMs = f.values[0] || 0;\n    else if (n === 'min' || n.includes('min')) minMs = f.values[0] || 0;\n  }\n}\nconst spreadMin = (maxMs - minMs) / 60000;\nconst throughput = spreadMin > 0 ? (count / spreadMin).toFixed(1) : '0';\nreturn {\n  graphic: { elements: [\n    { type: 'text', left: 'center', top: '30%', style: {\n      text: throughput, fontSize: 36, fontWeight: 'bold',\n      fill: Number(throughput) > 10 ? '#73BF69' : Number(throughput) > 5 ? '#FADE2A' : '#F2495C'\n    }},\n    { type: 'text', left: 'center', top: '65%', style: {\n      text: 'VMs / min', fontSize: 14, fill: textColor\n    }}\n  ]}\n};"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      }
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Fastest VM",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "min"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300000
+              },
+              {
+                "color": "red",
+                "value": 600000
+              }
+            ]
+          },
+          "unit": "ms",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      }
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Startup Spread",
+      "description": "Time spread between fastest and slowest VM startup (max - min vmiRunningLatency)",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "max"
+            },
+            {
+              "field": "vmiRunningLatency",
+              "id": "2",
+              "type": "min"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "3",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Startup Spread",
+            "binary": {
+              "left": "Max",
+              "operator": "-",
+              "right": "Min"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Max": true,
+              "Min": true,
+              "jobName.keyword": true
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300000
+              },
+              {
+                "color": "red",
+                "value": 600000
+              }
+            ]
+          },
+          "unit": "ms",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 5
+      }
     },
     {
       "collapsed": false,
@@ -746,7 +1056,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 18
       },
       "id": 102,
       "title": "Startup Lifecycle Waterfall",
@@ -758,208 +1068,82 @@
         "uid": "bd58d7f2-5053-4131-a364-d10169105758"
       },
       "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "ms"
-        },
+        "defaults": {},
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 10,
         "w": 24,
         "x": 0,
-        "y": 15
+        "y": 19
       },
       "id": 9,
       "options": {
-        "displayMode": "gradient",
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "orientation": "horizontal"
+        "renderer": "canvas",
+        "editor": {
+          "height": 600,
+          "format": "auto"
+        },
+        "baidu": {
+          "callback": "bmapReady",
+          "key": ""
+        },
+        "editorMode": "code",
+        "gaode": {
+          "key": "",
+          "plugin": "AMap.Scale,AMap.ToolBar"
+        },
+        "google": {
+          "callback": "gmapReady",
+          "key": ""
+        },
+        "map": "none",
+        "themeEditor": {
+          "config": "{}",
+          "height": 400,
+          "name": "default"
+        },
+        "visualEditor": {
+          "code": "return {};",
+          "dataset": [],
+          "series": []
+        },
+        "getOption": "const s = context.panel.data.series[0];\nconst isDark = context.grafana.theme.isDark;\nconst textColor = isDark ? '#ccc' : '#333';\nconst percentile = context.grafana.replaceVariables('$latencyPercentile') || 'P99';\n\nif (!s || !s.fields || s.fields.length < 2) {\n  return { title: { text: 'No VMI latency data', left: 'center', top: 'center', textStyle: { color: textColor } } };\n}\n\nlet nameField = null, valueField = null;\nfor (const f of s.fields) {\n  if (f.type === 'string' || (f.name || '').toLowerCase().includes('quantile')) nameField = f;\n  else if (f.type === 'number' || (f.name || '').toLowerCase().includes('average')) valueField = f;\n}\nif (!nameField || !valueField) {\n  return { title: { text: 'No data fields', left: 'center', top: 'center', textStyle: { color: textColor } } };\n}\n\nconst phaseOrder = ['VMICreated','VMIPending','VMIScheduling','VMIScheduled','PodPodScheduled','PodCreated','PodInitialized','PodContainersReady','VMIRunning','VMReady'];\nconst raw = {};\nfor (let i = 0; i < nameField.values.length; i++) {\n  raw[nameField.values[i]] = (valueField.values[i] || 0) / 1000;\n}\nconst phases = phaseOrder.filter(p => raw[p] !== undefined);\nconst cumulative = phases.map(p => raw[p]);\n\nconst deltas = [];\nfor (let i = 0; i < cumulative.length; i++) {\n  if (i === 0) deltas.push(cumulative[0]);\n  else deltas.push(Math.max(0, cumulative[i] - cumulative[i - 1]));\n}\n\nconst base = cumulative.map((c, i) => i === 0 ? 0 : cumulative[i - 1]);\n\nconst colors = ['#5470c6','#91cc75','#fac858','#ee6666','#73c0de','#3ba272','#fc8452','#9a60b4','#ea7ccc','#5794F2'];\n\nreturn {\n  tooltip: {\n    trigger: 'axis',\n    formatter: function(params) {\n      const phase = params[0].name;\n      const p0 = params.find(p => p.seriesName === 'base');\n      const p1 = params.find(p => p.seriesName === 'Phase Duration');\n      const cum = p0 && p1 ? (p0.value + p1.value) : 0;\n      const delta = p1 ? p1.value : 0;\n      return '<b>' + phase + '</b><br/>Cumulative: ' + cum.toFixed(1) + ' s<br/>Phase duration: ' + delta.toFixed(1) + ' s';\n    }\n  },\n  grid: { left: 60, right: 30, top: 30, bottom: 80 },\n  xAxis: { type: 'category', data: phases, axisLabel: { color: textColor, rotate: 35, fontSize: 11 } },\n  yAxis: { type: 'value', name: percentile + ' Latency (s)', nameTextStyle: { color: textColor }, axisLabel: { color: textColor },\n    splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } },\n  series: [\n    {\n      name: 'base',\n      type: 'bar',\n      stack: 'waterfall',\n      data: base,\n      itemStyle: { color: 'transparent' },\n      emphasis: { itemStyle: { color: 'transparent' } }\n    },\n    {\n      name: 'Phase Duration',\n      type: 'bar',\n      stack: 'waterfall',\n      data: deltas.map((d, i) => ({ value: d, itemStyle: { color: colors[i % colors.length] } })),\n      label: { show: true, position: 'top', formatter: function(p) { return p.value.toFixed(1) + 's'; },\n        color: textColor, fontSize: 11 }\n    }\n  ]\n};"
       },
       "targets": [
         {
-          "alias": "VmiCreated",
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "9",
-              "settings": {
-                "interval": "1y",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
           "datasource": {
             "type": "elasticsearch",
             "uid": "bd58d7f2-5053-4131-a364-d10169105758"
           },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND NOT jobName.keyword: shutdown-vms",
           "metrics": [
             {
-              "field": "VmiCreated",
+              "field": "$latencyPercentile",
               "id": "1",
               "type": "avg"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
+          "bucketAggs": [
+            {
+              "field": "quantileName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "1",
+                "size": "20"
+              }
+            }
+          ],
           "refId": "A",
-          "timeField": "timestamp"
-        },
-        {
-          "alias": "VmiPending",
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "9",
-              "settings": {
-                "interval": "1y",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
-          },
-          "metrics": [
-            {
-              "field": "VmiPending",
-              "id": "1",
-              "type": "avg"
-            }
-          ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
-          "refId": "B",
-          "timeField": "timestamp"
-        },
-        {
-          "alias": "VmiScheduling",
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "9",
-              "settings": {
-                "interval": "1y",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
-          },
-          "metrics": [
-            {
-              "field": "VmiScheduling",
-              "id": "1",
-              "type": "avg"
-            }
-          ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
-          "refId": "C",
-          "timeField": "timestamp"
-        },
-        {
-          "alias": "VmiScheduled",
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "9",
-              "settings": {
-                "interval": "1y",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
-          },
-          "metrics": [
-            {
-              "field": "VmiScheduled",
-              "id": "1",
-              "type": "avg"
-            }
-          ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
-          "refId": "D",
-          "timeField": "timestamp"
-        },
-        {
-          "alias": "VmiRunning",
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "9",
-              "settings": {
-                "interval": "1y",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
-          },
-          "metrics": [
-            {
-              "field": "VmiRunning",
-              "id": "1",
-              "type": "avg"
-            }
-          ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
-          "refId": "E",
-          "timeField": "timestamp"
-        },
-        {
-          "alias": "VmReady",
-          "bucketAggs": [
-            {
-              "field": "timestamp",
-              "id": "9",
-              "settings": {
-                "interval": "1y",
-                "min_doc_count": "0"
-              },
-              "type": "date_histogram"
-            }
-          ],
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
-          },
-          "metrics": [
-            {
-              "field": "VmReady",
-              "id": "1",
-              "type": "avg"
-            }
-          ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
-          "refId": "F",
           "timeField": "timestamp"
         }
       ],
-      "title": "Startup Lifecycle Waterfall",
-      "type": "bargauge"
+      "title": "Startup Lifecycle ($latencyPercentile)",
+      "type": "volkovlabs-echarts-panel",
+      "transformations": []
     },
     {
       "collapsed": false,
@@ -967,7 +1151,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 25
       },
       "id": 103,
       "title": "Per-VM Startup Times",
@@ -997,7 +1181,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 26
       },
       "id": 10,
       "options": {
@@ -1023,7 +1207,7 @@
               "type": "raw_data"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND nodeName.keyword: $worker",
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms AND nodeName.keyword: $worker",
           "refId": "A",
           "timeField": "timestamp"
         }
@@ -1062,7 +1246,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 34
       },
       "id": 104,
       "title": "Startup Time Distribution",
@@ -1086,7 +1270,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 35
       },
       "id": 11,
       "options": {
@@ -1109,7 +1293,7 @@
               "type": "raw_data"
             }
           ],
-          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement",
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
           "refId": "A",
           "timeField": "timestamp"
         }
@@ -1141,7 +1325,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 43
       },
       "id": 105,
       "panels": [
@@ -1204,7 +1388,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 40
+            "y": 44
           },
           "id": 12,
           "options": {
@@ -1253,7 +1437,7 @@
                   "type": "min"
                 }
               ],
-              "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement",
+              "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
               "refId": "A",
               "timeField": "timestamp"
             }
@@ -1287,7 +1471,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 52
       },
       "id": 106,
       "panels": [
@@ -1314,7 +1498,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 49
+            "y": 53
           },
           "id": 13,
           "options": {
@@ -1350,7 +1534,7 @@
                   "type": "avg"
                 }
               ],
-              "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement",
+              "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
               "refId": "A",
               "timeField": "timestamp"
             }
@@ -1368,7 +1552,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 61
       },
       "id": 107,
       "panels": [
@@ -1395,7 +1579,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 58
+            "y": 62
           },
           "id": 14,
           "options": {
@@ -1410,7 +1594,7 @@
               "alias": "{{term labels.queue.keyword}}",
               "bucketAggs": [
                 {
-                  "field": "labels.queue.keyword",
+                  "field": "labels.name.keyword",
                   "id": "3",
                   "settings": {
                     "order": "desc",
@@ -1471,7 +1655,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 58
+            "y": 62
           },
           "id": 15,
           "options": {
@@ -1486,7 +1670,7 @@
               "alias": "{{term labels.queue.keyword}}",
               "bucketAggs": [
                 {
-                  "field": "labels.queue.keyword",
+                  "field": "labels.name.keyword",
                   "id": "3",
                   "settings": {
                     "order": "desc",
@@ -1547,7 +1731,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 66
+            "y": 70
           },
           "id": 16,
           "options": {
@@ -1562,7 +1746,7 @@
               "alias": "{{term labels.component.keyword}}",
               "bucketAggs": [
                 {
-                  "field": "labels.component.keyword",
+                  "field": "labels.container.keyword",
                   "id": "3",
                   "settings": {
                     "order": "desc",
@@ -1623,7 +1807,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 66
+            "y": 70
           },
           "id": 17,
           "options": {
@@ -1638,7 +1822,7 @@
               "alias": "{{term labels.component.keyword}}",
               "bucketAggs": [
                 {
-                  "field": "labels.component.keyword",
+                  "field": "labels.container.keyword",
                   "id": "3",
                   "settings": {
                     "order": "desc",
@@ -1686,7 +1870,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 74
+        "y": 78
       },
       "id": 108,
       "panels": [
@@ -1713,7 +1897,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 75
+            "y": 79
           },
           "id": 18,
           "options": {
@@ -1779,7 +1963,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 75
+            "y": 79
           },
           "id": 19,
           "options": {
@@ -1814,7 +1998,7 @@
                   "type": "avg"
                 }
               ],
-              "query": "uuid.keyword: $uuid AND metricName.keyword: 99thEtcdDiskWalFsync",
+              "query": "uuid.keyword: $uuid AND metricName.keyword: 99thEtcdDiskWalFsyncDurationSeconds",
               "refId": "A",
               "timeField": "timestamp"
             },
@@ -1842,7 +2026,7 @@
                   "type": "avg"
                 }
               ],
-              "query": "uuid.keyword: $uuid AND metricName.keyword: 99thEtcdDiskBackendCommit",
+              "query": "uuid.keyword: $uuid AND metricName.keyword: 99thEtcdDiskBackendCommitDurationSeconds",
               "refId": "B",
               "timeField": "timestamp"
             }
@@ -1873,7 +2057,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 83
+            "y": 87
           },
           "id": 20,
           "options": {
@@ -1888,7 +2072,7 @@
               "alias": "{{term labels.node.keyword}}",
               "bucketAggs": [
                 {
-                  "field": "labels.node.keyword",
+                  "field": "labels.instance.keyword",
                   "id": "3",
                   "settings": {
                     "order": "desc",
@@ -1918,7 +2102,7 @@
                   "type": "avg"
                 }
               ],
-              "query": "uuid.keyword: $uuid AND metricName.keyword: nodeCPU AND labels.node.keyword: $worker",
+              "query": "uuid.keyword: $uuid AND metricName.keyword: nodeCPU AND labels.instance.keyword: $worker",
               "refId": "A",
               "timeField": "timestamp"
             }
@@ -1949,7 +2133,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 83
+            "y": 87
           },
           "id": 21,
           "options": {
@@ -1964,7 +2148,7 @@
               "alias": "{{term labels.node.keyword}}",
               "bucketAggs": [
                 {
-                  "field": "labels.node.keyword",
+                  "field": "labels.instance.keyword",
                   "id": "3",
                   "settings": {
                     "order": "desc",
@@ -1994,7 +2178,7 @@
                   "type": "avg"
                 }
               ],
-              "query": "uuid.keyword: $uuid AND metricName.keyword: nodeMemoryAvailable AND labels.node.keyword: $worker",
+              "query": "uuid.keyword: $uuid AND metricName.keyword: nodeMemoryAvailable AND labels.instance.keyword: $worker",
               "refId": "A",
               "timeField": "timestamp"
             }
@@ -2012,7 +2196,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 91
+        "y": 95
       },
       "id": 109,
       "panels": [
@@ -2039,7 +2223,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 92
+            "y": 96
           },
           "id": 22,
           "options": {
@@ -2105,7 +2289,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 92
+            "y": 96
           },
           "id": 23,
           "options": {
@@ -2171,7 +2355,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 100
+            "y": 104
           },
           "id": 24,
           "options": {
@@ -2237,7 +2421,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 100
+            "y": 104
           },
           "id": 25,
           "options": {
@@ -2290,7 +2474,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 108
+        "y": 112
       },
       "id": 110,
       "panels": [
@@ -2315,7 +2499,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 109
+            "y": 113
           },
           "id": 26,
           "options": {
@@ -2410,6 +2594,26 @@
         "type": "query"
       },
       {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "label": "CNV Version",
+        "multi": false,
+        "name": "cnvVersion",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query"
+      },
+      {
         "datasource": {
           "type": "elasticsearch",
           "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
@@ -2418,7 +2622,7 @@
         "label": "Run UUID",
         "multi": false,
         "name": "uuid",
-        "query": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "query": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND operators.cnvVersion.keyword: $cnvVersion\"}",
         "refresh": 2,
         "sort": 0,
         "type": "query"
