@@ -592,6 +592,20 @@ run_single_test() {
                 --results-dir "$results_path" || true
             logmain INFO "[$test_name] Alert collection complete"
         fi
+
+        # Index kube-burner and validation logs to ES
+        if [[ -n "$es_server" ]]; then
+            logmain INFO "[$test_name] Indexing execution logs to ES..."
+            if python3 "${SCRIPT_DIR}/config/scripts/log-indexer.py" \
+                --uuid "$kb_uuid" \
+                --test-name "$test_name" \
+                --es-server "$es_server" \
+                --results-dir "$results_path"; then
+                logmain INFO "[$test_name] Log indexing complete"
+            else
+                logmain INFO "[$test_name] WARNING: Log indexing failed (non-fatal)"
+            fi
+        fi
     else
         logmain INFO "[$test_name] Skipping metadata collection (no kube-burner UUID found)"
     fi

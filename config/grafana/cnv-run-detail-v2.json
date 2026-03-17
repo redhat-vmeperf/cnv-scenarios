@@ -17,6 +17,12 @@
       "label": "cnv-alerts",
       "type": "datasource",
       "pluginId": "elasticsearch"
+    },
+    {
+      "name": "DS_CNV_LOGS",
+      "label": "cnv-logs",
+      "type": "datasource",
+      "pluginId": "elasticsearch"
     }
   ],
   "__requires": [
@@ -54,6 +60,12 @@
       "type": "panel",
       "id": "bargauge",
       "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
       "version": ""
     }
   ],
@@ -106,10 +118,10 @@
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 24,
+        "h": 1
       },
       "id": 100,
       "title": "Run Identity",
@@ -165,10 +177,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
         "x": 0,
-        "y": 1
+        "y": 1,
+        "w": 6,
+        "h": 3
       },
       "id": 1,
       "options": {
@@ -234,10 +246,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 3,
-        "y": 4
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 3
       },
       "id": 2,
       "options": {
@@ -303,10 +315,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 6,
-        "y": 7
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 3
       },
       "id": 3,
       "options": {
@@ -372,10 +384,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 9,
-        "y": 10
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 3
       },
       "id": 4,
       "options": {
@@ -441,10 +453,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 12,
-        "y": 13
+        "x": 0,
+        "y": 4,
+        "w": 5,
+        "h": 3
       },
       "id": 5,
       "options": {
@@ -510,10 +522,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 15,
-        "y": 16
+        "x": 5,
+        "y": 4,
+        "w": 5,
+        "h": 3
       },
       "id": 6,
       "options": {
@@ -579,10 +591,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 18,
-        "y": 19
+        "x": 10,
+        "y": 4,
+        "w": 5,
+        "h": 3
       },
       "id": 7,
       "options": {
@@ -648,10 +660,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 21,
-        "y": 22
+        "x": 15,
+        "y": 4,
+        "w": 5,
+        "h": 3
       },
       "id": 8,
       "options": {
@@ -717,10 +729,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 21,
-        "y": 22
+        "x": 20,
+        "y": 4,
+        "w": 4,
+        "h": 3
       },
       "id": 9,
       "options": {
@@ -765,36 +777,18 @@
       "type": "stat"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
-      "id": 111,
-      "title": "Runtime Configuration",
-      "type": "row"
-    },
-    {
       "datasource": {
         "type": "elasticsearch",
         "uid": "${DS_CNV_ES}"
       },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            }
-          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "purple",
                 "value": null
               }
             ]
@@ -804,23 +798,27 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
         "x": 0,
-        "y": 27
+        "y": 7,
+        "w": 5,
+        "h": 3
       },
-      "id": 112,
+      "id": 31,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "reducer": [
-            "sum"
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
           ],
-          "show": false
+          "fields": "operators.cnvVersion",
+          "values": false
         },
-        "showHeader": true,
-        "sortBy": []
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "targets": [
         {
@@ -844,76 +842,292 @@
           }
         }
       ],
-      "title": "Runtime Config",
-      "type": "table",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "source": "runtimeConfig",
-            "format": "auto",
-            "keepTime": false,
-            "replace": false
-          }
+      "title": "CNV",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 7,
+        "w": 5,
+        "h": 3
+      },
+      "id": 32,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "operators.hcoVersion",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
         {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "_id": true,
-              "_type": true,
-              "timestamp": true,
-              "metricName": true,
-              "uuid": true,
-              "testName": true,
-              "testMode": true,
-              "runTimestamp": true,
-              "kubeBurnerVersion": true,
-              "testResult": true,
-              "exitCode": true,
-              "durationSeconds": true,
-              "testCategory": true,
-              "cluster.ocpVersion": true,
-              "cluster.clusterId": true,
-              "cluster.platform": true,
-              "cluster.apiUrl": true,
-              "cluster.networkType": true,
-              "nodes.total": true,
-              "nodes.masters": true,
-              "nodes.workers": true,
-              "nodes.workerDetails": true,
-              "operators.cnvVersion": true,
-              "operators.hcoVersion": true,
-              "operators.odfVersion": true,
-              "operators.sriovVersion": true,
-              "operators.nmstateVersion": true,
-              "storage.defaultClass": true,
-              "storage.classes": true,
-              "testConfig.varsFile": true,
-              "testConfig.vmCount": true,
-              "testConfig.cpuCores": true,
-              "testConfig.memory": true,
-              "testConfig.storage": true,
-              "testConfig.storageClassName": true,
-              "validationSummary.totalPhases": true,
-              "validationSummary.passed": true,
-              "validationSummary.failed": true,
-              "validationSummary.skipped": true,
-              "validationSummary.overallStatus": true
-            },
-            "renameByName": {},
-            "includeByName": {}
+          "alias": "",
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "1"
+              }
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
           }
         }
-      ]
+      ],
+      "title": "HCO",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 7,
+        "w": 4,
+        "h": 3
+      },
+      "id": 33,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "operators.odfVersion",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "1"
+              }
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
+        }
+      ],
+      "title": "ODF",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "cyan",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 7,
+        "w": 5,
+        "h": 3
+      },
+      "id": 34,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "operators.sriovVersion",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "1"
+              }
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
+        }
+      ],
+      "title": "SR-IOV",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 7,
+        "w": 5,
+        "h": 3
+      },
+      "id": 35,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "operators.nmstateVersion",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "1"
+              }
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
+        }
+      ],
+      "title": "NMState",
+      "type": "stat"
     },
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 25
+        "y": 10,
+        "w": 24,
+        "h": 1
       },
       "id": 101,
       "title": "Validation Results",
@@ -969,10 +1183,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 0,
-        "y": 26
+        "y": 11,
+        "w": 6,
+        "h": 4
       },
       "id": 10,
       "options": {
@@ -984,7 +1198,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "overallStatus",
+          "fields": "status",
           "values": false
         },
         "showPercentChange": false,
@@ -1044,10 +1258,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 18,
         "x": 6,
-        "y": 30
+        "y": 11,
+        "w": 18,
+        "h": 8
       },
       "id": 11,
       "options": {
@@ -1085,17 +1299,437 @@
         }
       ],
       "title": "Validation Phases",
-      "type": "table"
+      "type": "table",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "test_name",
+                "status",
+                "validations.phase",
+                "validations.status",
+                "validations.message",
+                "validations.duration_seconds"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "test_name": "Test",
+              "status": "Result",
+              "validations.phase": "Phase",
+              "validations.status": "Status",
+              "validations.message": "Message",
+              "validations.duration_seconds": "Duration (s)"
+            },
+            "indexByName": {
+              "test_name": 0,
+              "status": 1,
+              "validations.phase": 2,
+              "validations.status": 3,
+              "validations.message": 4,
+              "validations.duration_seconds": 5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 300,
+      "type": "row",
+      "title": "Execution Logs",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 301,
+      "type": "table",
+      "title": "Errors & Warnings",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_LOGS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_LOGS}"
+          },
+          "query": "uuid.keyword: $uuid AND (level.keyword: error OR level.keyword: fatal OR level.keyword: warning)",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "500"
+              }
+            }
+          ],
+          "bucketAggs": [],
+          "timeField": "@timestamp"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "level"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "error": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "fatal": {
+                        "color": "dark-red",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "warning": {
+                        "color": "orange",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "@timestamp"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "@timestamp",
+            "desc": false
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "@timestamp",
+                "level",
+                "message",
+                "source"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "@timestamp": "Time",
+              "level": "Level",
+              "message": "Message",
+              "source": "Source"
+            },
+            "indexByName": {
+              "@timestamp": 0,
+              "level": 1,
+              "source": 2,
+              "message": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 302,
+      "type": "logs",
+      "title": "Execution Log",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_LOGS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_LOGS}"
+          },
+          "query": "uuid.keyword: $uuid",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "logs",
+              "settings": {
+                "limit": "500"
+              }
+            }
+          ],
+          "bucketAggs": [],
+          "timeField": "@timestamp"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Ascending"
+      }
     },
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 38
+        "y": 37,
+        "w": 24,
+        "h": 1
       },
-      "id": 113,
+      "id": 200,
+      "title": "Runtime Configuration",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_CNV_ES}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 10
+      },
+      "id": 201,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "1"
+              }
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_CNV_ES}"
+          }
+        }
+      ],
+      "title": "Runtime Config",
+      "type": "table",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "runtimeConfig.burstCreate",
+                "runtimeConfig.burstShutdown",
+                "runtimeConfig.burstStartup",
+                "runtimeConfig.imageUrl",
+                "runtimeConfig.jobPause",
+                "runtimeConfig.max-iterations",
+                "runtimeConfig.maxWaitTimeout",
+                "runtimeConfig.max_ssh_retries",
+                "runtimeConfig.namespaceCount",
+                "runtimeConfig.nodeSelectorLabel",
+                "runtimeConfig.percentage_of_vms_to_validate",
+                "runtimeConfig.qpsCreate",
+                "runtimeConfig.qpsShutdown",
+                "runtimeConfig.qpsStartup",
+                "runtimeConfig.scaleMode",
+                "runtimeConfig.shutdownBatchSize",
+                "runtimeConfig.skipVmRestart",
+                "runtimeConfig.skipVmShutdown",
+                "runtimeConfig.sleepBetweenPhases",
+                "runtimeConfig.sourceStorageSize",
+                "runtimeConfig.storageClassName",
+                "runtimeConfig.targetNode",
+                "runtimeConfig.testNamespacePrefix",
+                "runtimeConfig.vmCpuCores",
+                "runtimeConfig.vmCpuLimit",
+                "runtimeConfig.vmCpuRequest",
+                "runtimeConfig.vmMemory",
+                "runtimeConfig.vmStorageSize",
+                "runtimeConfig.vmUser",
+                "runtimeConfig.vmsPerNamespace",
+                "runtimeConfig.workerNodeSelector"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "runtimeConfig.burstCreate": "burstCreate",
+              "runtimeConfig.burstShutdown": "burstShutdown",
+              "runtimeConfig.burstStartup": "burstStartup",
+              "runtimeConfig.imageUrl": "imageUrl",
+              "runtimeConfig.jobPause": "jobPause",
+              "runtimeConfig.max-iterations": "max-iterations",
+              "runtimeConfig.maxWaitTimeout": "maxWaitTimeout",
+              "runtimeConfig.max_ssh_retries": "max_ssh_retries",
+              "runtimeConfig.namespaceCount": "namespaceCount",
+              "runtimeConfig.nodeSelectorLabel": "nodeSelectorLabel",
+              "runtimeConfig.percentage_of_vms_to_validate": "percentage_of_vms_to_validate",
+              "runtimeConfig.qpsCreate": "qpsCreate",
+              "runtimeConfig.qpsShutdown": "qpsShutdown",
+              "runtimeConfig.qpsStartup": "qpsStartup",
+              "runtimeConfig.scaleMode": "scaleMode",
+              "runtimeConfig.shutdownBatchSize": "shutdownBatchSize",
+              "runtimeConfig.skipVmRestart": "skipVmRestart",
+              "runtimeConfig.skipVmShutdown": "skipVmShutdown",
+              "runtimeConfig.sleepBetweenPhases": "sleepBetweenPhases",
+              "runtimeConfig.sourceStorageSize": "sourceStorageSize",
+              "runtimeConfig.storageClassName": "storageClassName",
+              "runtimeConfig.targetNode": "targetNode",
+              "runtimeConfig.testNamespacePrefix": "testNamespacePrefix",
+              "runtimeConfig.vmCpuCores": "vmCpuCores",
+              "runtimeConfig.vmCpuLimit": "vmCpuLimit",
+              "runtimeConfig.vmCpuRequest": "vmCpuRequest",
+              "runtimeConfig.vmMemory": "vmMemory",
+              "runtimeConfig.vmStorageSize": "vmStorageSize",
+              "runtimeConfig.vmUser": "vmUser",
+              "runtimeConfig.vmsPerNamespace": "vmsPerNamespace",
+              "runtimeConfig.workerNodeSelector": "workerNodeSelector"
+            }
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ],
+            "includeTimeField": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Field": "Property",
+              "Last *": "Value"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 1
+      },
+      "id": 202,
       "title": "Prometheus Alerts",
       "type": "row"
     },
@@ -1125,12 +1759,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 0,
-        "y": 39
+        "y": 49,
+        "w": 4,
+        "h": 4
       },
-      "id": 114,
+      "id": 203,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -1200,12 +1834,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 20,
         "x": 4,
-        "y": 39
+        "y": 49,
+        "w": 20,
+        "h": 8
       },
-      "id": 115,
+      "id": 204,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -1277,10 +1911,10 @@
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 38
+        "y": 57,
+        "w": 24,
+        "h": 1
       },
       "id": 102,
       "title": "VMI Latency",
@@ -1319,10 +1953,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 24,
         "x": 0,
-        "y": 39
+        "y": 58,
+        "w": 24,
+        "h": 6
       },
       "id": 112,
       "options": {
@@ -1414,10 +2048,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
         "x": 0,
-        "y": 45
+        "y": 64,
+        "w": 24,
+        "h": 8
       },
       "id": 20,
       "options": {
@@ -1460,10 +2094,10 @@
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 53
+        "y": 72,
+        "w": 24,
+        "h": 1
       },
       "id": 110,
       "title": "PVC Latency",
@@ -1497,10 +2131,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 24,
         "x": 0,
-        "y": 54
+        "y": 73,
+        "w": 24,
+        "h": 6
       },
       "id": 111,
       "options": {
@@ -1543,10 +2177,10 @@
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 60
+        "y": 79,
+        "w": 24,
+        "h": 1
       },
       "id": 103,
       "title": "Worker Node Hardware",
@@ -1580,10 +2214,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 24,
         "x": 0,
-        "y": 61
+        "y": 80,
+        "w": 24,
+        "h": 6
       },
       "id": 25,
       "options": {
@@ -1689,369 +2323,12 @@
       ]
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 67
-      },
-      "id": 104,
-      "title": "Operator Versions",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "${DS_CNV_ES}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "purple",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 0,
-        "y": 68
-      },
-      "id": 31,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "operators.cnvVersion",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "alias": "",
-          "bucketAggs": [],
-          "metrics": [
-            {
-              "id": "1",
-              "type": "raw_data",
-              "settings": {
-                "size": "1"
-              }
-            }
-          ],
-          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
-          "refId": "A",
-          "timeField": "timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_CNV_ES}"
-          }
-        }
-      ],
-      "title": "CNV",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "${DS_CNV_ES}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 5,
-        "y": 71
-      },
-      "id": 32,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "operators.hcoVersion",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "alias": "",
-          "bucketAggs": [],
-          "metrics": [
-            {
-              "id": "1",
-              "type": "raw_data",
-              "settings": {
-                "size": "1"
-              }
-            }
-          ],
-          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
-          "refId": "A",
-          "timeField": "timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_CNV_ES}"
-          }
-        }
-      ],
-      "title": "HCO",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "${DS_CNV_ES}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "orange",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 10,
-        "y": 74
-      },
-      "id": 33,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "operators.odfVersion",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "alias": "",
-          "bucketAggs": [],
-          "metrics": [
-            {
-              "id": "1",
-              "type": "raw_data",
-              "settings": {
-                "size": "1"
-              }
-            }
-          ],
-          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
-          "refId": "A",
-          "timeField": "timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_CNV_ES}"
-          }
-        }
-      ],
-      "title": "ODF",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "${DS_CNV_ES}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "cyan",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 14,
-        "y": 77
-      },
-      "id": 34,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "operators.sriovVersion",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "alias": "",
-          "bucketAggs": [],
-          "metrics": [
-            {
-              "id": "1",
-              "type": "raw_data",
-              "settings": {
-                "size": "1"
-              }
-            }
-          ],
-          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
-          "refId": "A",
-          "timeField": "timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_CNV_ES}"
-          }
-        }
-      ],
-      "title": "SR-IOV",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "${DS_CNV_ES}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 19,
-        "y": 80
-      },
-      "id": 35,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "operators.nmstateVersion",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "alias": "",
-          "bucketAggs": [],
-          "metrics": [
-            {
-              "id": "1",
-              "type": "raw_data",
-              "settings": {
-                "size": "1"
-              }
-            }
-          ],
-          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
-          "refId": "A",
-          "timeField": "timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_CNV_ES}"
-          }
-        }
-      ],
-      "title": "NMState",
-      "type": "stat"
-    },
-    {
       "collapsed": true,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 83
+        "y": 86,
+        "w": 24,
+        "h": 1
       },
       "id": 105,
       "title": "Cluster Status",
@@ -2082,7 +2359,7 @@
             "h": 4,
             "w": 8,
             "x": 0,
-            "y": 84
+            "y": 102
           },
           "id": 40,
           "options": {
@@ -2159,7 +2436,7 @@
             "h": 4,
             "w": 8,
             "x": 8,
-            "y": 88
+            "y": 106
           },
           "id": 41,
           "options": {
@@ -2247,7 +2524,7 @@
             "h": 4,
             "w": 8,
             "x": 16,
-            "y": 92
+            "y": 110
           },
           "id": 42,
           "options": {
@@ -2304,10 +2581,10 @@
     {
       "collapsed": true,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 96
+        "y": 87,
+        "w": 24,
+        "h": 1
       },
       "id": 106,
       "title": "KubeVirt Control Plane",
@@ -2370,7 +2647,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 97
+            "y": 115
           },
           "id": 50,
           "options": {
@@ -2486,7 +2763,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 105
+            "y": 123
           },
           "id": 51,
           "options": {
@@ -2602,7 +2879,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 113
+            "y": 131
           },
           "id": 52,
           "options": {
@@ -2718,7 +2995,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 121
+            "y": 139
           },
           "id": 53,
           "options": {
@@ -2782,10 +3059,10 @@
     {
       "collapsed": true,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 129
+        "y": 88,
+        "w": 24,
+        "h": 1
       },
       "id": 107,
       "title": "etcd",
@@ -2852,7 +3129,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 130
+            "y": 148
           },
           "id": 60,
           "options": {
@@ -2961,7 +3238,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 138
+            "y": 156
           },
           "id": 61,
           "options": {
@@ -3066,7 +3343,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 146
+            "y": 164
           },
           "id": 62,
           "options": {
@@ -3182,7 +3459,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 154
+            "y": 172
           },
           "id": 63,
           "options": {
@@ -3287,7 +3564,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 162
+            "y": 180
           },
           "id": 113,
           "options": {
@@ -3368,10 +3645,10 @@
     {
       "collapsed": true,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 170
+        "y": 89,
+        "w": 24,
+        "h": 1
       },
       "id": 108,
       "title": "API Server & Kubelet",
@@ -3434,7 +3711,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 171
+            "y": 189
           },
           "id": 70,
           "options": {
@@ -3567,7 +3844,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 179
+            "y": 197
           },
           "id": 71,
           "options": {
@@ -3683,7 +3960,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 187
+            "y": 205
           },
           "id": 72,
           "options": {
@@ -3799,7 +4076,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 195
+            "y": 213
           },
           "id": 73,
           "options": {
@@ -3880,10 +4157,10 @@
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 203
+        "y": 90,
+        "w": 24,
+        "h": 1
       },
       "id": 109,
       "repeat": "worker",
@@ -3945,10 +4222,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 204
+        "y": 91,
+        "w": 12,
+        "h": 8
       },
       "id": 80,
       "options": {
@@ -4061,10 +4338,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 212
+        "y": 91,
+        "w": 12,
+        "h": 8
       },
       "id": 81,
       "options": {
@@ -4177,10 +4454,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 220
+        "y": 99,
+        "w": 12,
+        "h": 8
       },
       "id": 82,
       "options": {
@@ -4293,10 +4570,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 228
+        "y": 99,
+        "w": 12,
+        "h": 8
       },
       "id": 83,
       "options": {
@@ -4398,10 +4675,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 236
+        "y": 107,
+        "w": 12,
+        "h": 8
       },
       "id": 114,
       "options": {
@@ -4531,10 +4808,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 244
+        "y": 107,
+        "w": 12,
+        "h": 8
       },
       "id": 115,
       "options": {
