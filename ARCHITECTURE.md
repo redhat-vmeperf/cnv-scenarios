@@ -24,7 +24,9 @@ This document describes the internal architecture of the CNV test scenarios, foc
   - [Metadata Collector](#metadata-collector)
   - [Validation Indexer](#validation-indexer)
   - [Alert Collector](#alert-collector)
+  - [Log Indexer](#log-indexer)
   - [Elasticsearch Index Structure](#elasticsearch-index-structure)
+  - [Elasticsearch Index Relationships](#elasticsearch-index-relationships)
   - [Grafana Dashboards](#grafana-dashboards)
 
 ---
@@ -402,10 +404,6 @@ my-scenario)
 
 The test suite includes an end-to-end observability pipeline that flows data from test execution through Elasticsearch into Grafana dashboards.
 
-### Architecture Diagram
-
-An interactive Excalidraw diagram of the full pipeline is available at [`config/grafana/cnv-observability-architecture.excalidraw`](config/grafana/cnv-observability-architecture.excalidraw). Open it in [excalidraw.com](https://excalidraw.com) or any compatible viewer.
-
 ### Data Flow Overview
 
 ```
@@ -425,9 +423,14 @@ run-workloads.sh
   │   └─ Indexes validation-*.json      │
   │      from results directory         │
   │                                      │
-  └─ alert-collector.sh ────────────────┼──► ES: cnv-alerts       (Prometheus alerts during test)
-      └─ Queries Prometheus /api/v1/    │
-         alerts for the test window     │
+  ├─ alert-collector.sh ────────────────┼──► ES: cnv-alerts       (Prometheus alerts during test)
+  │   └─ Queries Prometheus /api/v1/    │
+  │      alerts for the test window     │
+  │                                      │
+  └─ log-indexer.py ────────────────────┼──► ES: cnv-logs         (parsed execution logs)
+      └─ Parses kube-burner.log and     │
+         validation.log into structured │
+         documents                      │
                                         │
                           Elasticsearch ─┘
                                 │
@@ -487,6 +490,21 @@ Queries the Prometheus `/api/v1/alerts` endpoint during the test's time window a
 
 Indexed to the `cnv-alerts` ES index for correlation with test results.
 
+### Log Indexer
+
+**Script:** `config/scripts/log-indexer.py`
+
+Parses kube-burner and validation log files from the results directory and bulk-indexes each line to the `cnv-logs` ES index. Handles two log formats:
+
+| Format | Source File | Regex Pattern |
+|--------|------------|---------------|
+| kube-burner Logrus | `kube-burner.log` | `time="..." level=... msg="..."` |
+| Validation log | `validation.log` | `[timestamp] [phase] STATUS: message` |
+
+Lines that don't match either pattern are indexed as raw entries. Each document includes `@timestamp`, `level`, `message`, `source` (kube-burner or validation), `uuid`, `testName`, and `metricName`.
+
+Requires `python3` with only standard library modules (`urllib.request`, `json`, `re`). Failures are non-fatal -- log indexing errors do not affect test results.
+
 ### Elasticsearch Index Structure
 
 | Index Pattern | Content | Created By |
@@ -495,19 +513,109 @@ Indexed to the `cnv-alerts` ES index for correlation with test results.
 | `cnv-<testName>` | kube-burner metrics (VMI latency, PVC latency, node metrics, Ceph, etc.) | kube-burner (Prometheus scrape + local indexer) |
 | `cnv-validation` | Structured validation pass/fail reports | validation-indexer.sh |
 | `cnv-alerts` | Prometheus alerts active during each test | alert-collector.sh |
+| `cnv-logs` | Parsed kube-burner and validation log lines | log-indexer.py |
 
 All documents share a common `uuid` field (kube-burner's run UUID) for cross-index correlation.
 
+### Elasticsearch Index Relationships
+
+The five indices form a star topology with `cnv-metadata` at the center. Every document produced by a single test run carries the same `uuid`, which is the kube-burner run UUID extracted from `jobSummary.json`.
+
+```mermaid
+erDiagram
+    cnvMetadata ||--o{ cnvTestName : "uuid"
+    cnvMetadata ||--o{ cnvValidation : "uuid"
+    cnvMetadata ||--o{ cnvAlerts : "uuid"
+    cnvMetadata ||--o{ cnvLogs : "uuid"
+
+    cnvMetadata {
+        keyword uuid PK
+        keyword testName
+        keyword testResult
+        keyword testMode
+        keyword runTimestamp
+        integer exitCode
+        integer durationSeconds
+        object cluster
+        object operators
+        object nodes
+        object storage
+        object testConfig
+        object runtimeConfig
+        object validationSummary
+    }
+
+    cnvTestName {
+        keyword uuid FK
+        keyword metricName
+        keyword jobName
+        date timestamp
+        keyword quantileName
+        keyword nodeName
+        float P99
+        float P95
+        float P50
+        float Avg
+        float Max
+    }
+
+    cnvValidation {
+        keyword uuid FK
+        keyword testName
+        keyword metricName
+        keyword overallStatus
+        keyword testCategory
+        integer exitCode
+        nested validations
+    }
+
+    cnvAlerts {
+        keyword uuid FK
+        keyword testName
+        object alertsSummary
+        nested alerts
+    }
+
+    cnvLogs {
+        keyword uuid FK
+        keyword testName
+        date timestamp
+        keyword level
+        text message
+        keyword source
+        keyword metricName
+    }
+```
+
+**Key fields in `cnv-metadata.cluster`:** `ocpVersion`, `clusterId`, `platform`, `apiUrl`, `networkType`
+
+**Key fields in `cnv-metadata.operators`:** `cnvVersion`, `hcoVersion`, `odfVersion`, `sriovVersion`, `nmstateVersion`
+
+**Key fields in `cnv-metadata.nodes`:** `total`, `masters`, `workers`, plus per-worker arrays with `name`, `cpu`, `memory`, `architecture`
+
+**Key fields in `cnv-metadata.testConfig`:** `vmCount`, `cpuCores`, `memory`, `storage`, `storageClassName` (normalized from vars file with fallback chains)
+
+**Cross-index query patterns:**
+
+| Query Pattern | Source Index | Join Field | Use Case |
+|---------------|-------------|------------|----------|
+| Run inventory and filtering | `cnv-metadata` | `uuid` | Fleet Overview and Run Explorer populate dropdowns from `testName`, `cluster.ocpVersion`, `operators.cnvVersion` |
+| Metric time-series for a run | `cnv-<testName>` | `uuid` | Run Detail fetches VMI latency, PVC latency, node metrics filtered by the selected UUID |
+| Validation details for a run | `cnv-validation` | `uuid` | Run Detail and Run Comparison show per-phase pass/fail status |
+| Alerts during a run | `cnv-alerts` | `uuid` | Run Detail shows firing/pending alerts and severity breakdown |
+| Log lines for a run | `cnv-logs` | `uuid` | Debugging: filter by uuid + level to find errors during a specific execution |
+| Cross-run comparison | `cnv-metadata` x2 | two UUIDs | Run Comparison selects two UUIDs and diffs environment, config, and metrics side by side |
+
 ### Grafana Dashboards
 
-Five v2 dashboards are stored as JSON in `config/grafana/` and deployed to Grafana via the import API.
+Dashboard JSON files are stored in `config/grafana/` and deployed to Grafana via the import API.
 
 | Dashboard | File | Purpose |
 |-----------|------|---------|
-| **Fleet Overview** | `cnv-fleet-overview-v2.json` | KPIs across all runs: success rate, duration trends, version matrix, workload profile |
-| **Run Explorer** | `cnv-run-explorer-v2.json` | Searchable table of all runs with filters for workload, CNV version, storage class |
+| **Fleet Overview** | `cnv-fleet-overview-v2.json` | KPIs across all runs: success rate, duration trends, OCP/CNV version matrix, workload profiles |
+| **Run Explorer** | `cnv-run-explorer-v2.json` | Searchable table of all runs with cascading filters for workload, CNV version, storage class |
 | **Run Detail** | `cnv-run-detail-v2.json` | Deep dive into a single run: VMI latency waterfall, PVC latency, node metrics, runtime config, alerts |
-| **Run Comparison** | `cnv-run-comparison-v2.json` | Side-by-side comparison of two runs: environment diff, config diff, metric overlay |
+| **Run Comparison** | `cnv-run-comparison-v3.json` | Side-by-side comparison of two runs: metrics health scorecard, per-metric overlays, environment diff, config diff, VMI latency grouped bars, historical trend context |
 | **VM Startup Performance** | `cnv-vm-startup-performance.json` | VM lifecycle analysis: startup waterfall, per-node breakdown, KubeVirt control plane, Ceph/ODF metrics |
 
 **Dashboard datasources:**

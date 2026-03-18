@@ -59,7 +59,7 @@ publicKey: '/home/kni/.ssh/id_rsa.pub'    # Path to SSH public key file
 vmUser: 'fedora'                           # Username for SSH access to VMs (fedora for Fedora images, cloud-user for CentOS/RHEL)
 
 # Monitoring Configuration (Optional)
-esServer: http://f01-h08-000-1029u.rdu2.scalelab.redhat.com:9200  # Elasticsearch server for metrics storage
+esServer: ""  # Elasticsearch server for metrics storage
 metadataIndex: "cnv-metadata"                    # Elasticsearch index for run metadata
 PROM: ""                                   # Prometheus endpoint (set via environment to enable monitoring)
 PROM_TOKEN: ""                             # Prometheus token (set via environment to enable monitoring)

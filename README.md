@@ -16,6 +16,7 @@ Before running tests, ensure you have the following installed and configured:
 | **oc** and **kubectl** | Kubernetes CLI | [OpenShift CLI](https://docs.openshift.com/container-platform/latest/cli_reference/openshift_cli/getting-started-cli.html) |
 | **OpenShift Virtualization** | CNV operator | Installed on cluster |
 | **Storage Class** | PVC provisioning | Configured (default: `ocs-storagecluster-ceph-rbd`) |
+| **python3** | Log indexing to Elasticsearch (optional) | `dnf install python3` or pre-installed on most systems |
 | **SSH Keys** | VM access validation | Paths in vars files must be valid and accessible |
 
 **SSH Key Setup:**
@@ -775,17 +776,18 @@ per-host-density, virt-capacity-benchmark
 
 ## Observability and Dashboards
 
-When `esServer` is configured in the vars file, the test suite indexes structured data to Elasticsearch and visualizes it through five Grafana dashboards.
+When `esServer` is configured in the vars file, the test suite indexes structured data to Elasticsearch and visualizes it through Grafana dashboards.
 
 ### Data Pipeline
 
-After each test, `run-workloads.sh` runs three post-processing scripts:
+After each test, `run-workloads.sh` runs four post-processing scripts:
 
 | Script | ES Index | What It Captures |
 |--------|----------|------------------|
 | `metadata-collector.sh` | `cnv-metadata` | Cluster info (OCP/CNV/ODF versions, node specs), test config, runtime vars |
 | `validation-indexer.sh` | `cnv-validation` | Structured pass/fail reports from each validation phase |
 | `alert-collector.sh` | `cnv-alerts` | Prometheus alerts active during the test window |
+| `log-indexer.py` | `cnv-logs` | Parsed kube-burner and validation log lines with timestamps and levels |
 
 kube-burner itself indexes metrics (VMI latency, PVC latency, node/Ceph metrics) to per-test `cnv-<testName>` indices via its Prometheus scrape + ES indexer.
 

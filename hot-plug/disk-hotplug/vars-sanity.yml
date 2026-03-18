@@ -51,7 +51,7 @@ hotplugTimeout: "5m"
 nodeSelector: ""
 
 # Monitoring Configuration (ES enabled, Prometheus disabled for sanity)
-esServer: "http://f01-h08-000-1029u.rdu2.scalelab.redhat.com:9200"
+esServer: ""
 metadataIndex: "cnv-metadata"
 PROM: ""
 PROM_TOKEN: ""
