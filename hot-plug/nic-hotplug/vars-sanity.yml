@@ -9,7 +9,8 @@ runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 
 # NIC Hot-plug Configuration (minimal)
 nicCount: 2
-baseInterface: "ens3f1"
+# Empty: run-workloads.sh auto-detects via detect-available-interface.sh, or set baseInterface=... in the environment
+baseInterface: ""
 
 # Cleanup Configuration
 cleanupNncp: true

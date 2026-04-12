@@ -269,7 +269,10 @@ setup_per_host_density() {
 }
 
 # Setup for nic-hotplug test
+# Args: $1 = processed kube-burner vars file path (materialize baseInterface / nicCount into this file)
 setup_nic_hotplug() {
+    local temp_vars="${1:-}"
+
     if [[ -z "$baseInterface" ]]; then
         local detect_script="${SCRIPT_DIR}/config/scripts/detect-available-interface.sh"
         if [[ -x "$detect_script" ]]; then
@@ -289,11 +292,15 @@ setup_nic_hotplug() {
             return 1
         fi
     fi
-    
-    # Determine nicCount: CLI env var > vars file > default
+
+    # Determine nicCount: CLI env var > processed vars > source vars by mode > default
     local effective_nic_count="${nicCount:-}"
     if [[ -z "$effective_nic_count" ]]; then
-        # Read from vars file based on MODE
+        if [[ -n "$temp_vars" && -f "$temp_vars" ]]; then
+            effective_nic_count=$(grep "^nicCount:" "$temp_vars" 2>/dev/null | awk '{print $2}')
+        fi
+    fi
+    if [[ -z "$effective_nic_count" ]]; then
         local vars_file="${SCRIPT_DIR}/hot-plug/nic-hotplug/vars.yml"
         if [[ "$MODE" == "sanity" ]]; then
             vars_file="${SCRIPT_DIR}/hot-plug/nic-hotplug/vars-sanity.yml"
@@ -301,16 +308,24 @@ setup_nic_hotplug() {
         if [[ -f "$vars_file" ]]; then
             effective_nic_count=$(grep "^nicCount:" "$vars_file" 2>/dev/null | awk '{print $2}')
         fi
-        # Fallback to default if still empty
         effective_nic_count="${effective_nic_count:-25}"
     fi
-    
+
+    # Keep --user-data file aligned with effective values (kube-burner / operator forensics)
+    if [[ -n "$temp_vars" && -f "$temp_vars" ]]; then
+        sed -i "s#^baseInterface:.*#baseInterface: \"${baseInterface}\"#" "$temp_vars"
+        if [[ -n "${nicCount:-}" ]]; then
+            sed -i "s#^nicCount:.*#nicCount: ${nicCount}#" "$temp_vars"
+        fi
+        logmain INFO "[nic-hotplug] Wrote effective baseInterface (and nicCount if set) to ${temp_vars}"
+    fi
+
     log ""
     log "NIC Configuration:"
     log "  baseInterface=${baseInterface}"
     log "  nicCount=${effective_nic_count}"
     log ""
-    
+
     return 0
 }
 
@@ -325,7 +340,7 @@ run_setup() {
             setup_per_host_density "$vars_file"
             ;;
         nic-hotplug)
-            setup_nic_hotplug
+            setup_nic_hotplug "$vars_file"
             ;;
         *)
             # No special setup needed
@@ -466,6 +481,10 @@ run_single_test() {
     fi
     if [[ -n "$PROM_TOKEN" ]]; then
         sed -i "s|^PROM_TOKEN:.*|PROM_TOKEN: \"${PROM_TOKEN}\"|" "$temp_vars"
+    fi
+    # Enable kube-burner Elasticsearch indexer (nic-hotplug-test.yml gates on .esServer)
+    if [[ -n "${esServer:-}" ]]; then
+        sed -i "s#^esServer:.*#esServer: \"${esServer}\"#" "$temp_vars"
     fi
 
     logmain INFO "[$test_name] Starting test"
