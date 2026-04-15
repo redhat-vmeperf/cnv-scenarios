@@ -1,8 +1,8 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := "disk-hotplug-test" }}
-{{- $nsName := .testNamespace | default "disk-hotplug-test" -}}
+{{- $testName := "cnv-disk-hotplug" }}
+{{- $nsName := .testNamespace | default "cnv-disk-hotplug" -}}
 {{- $vmCount := .vmCount | default 1 -}}
 {{- $vmName := "disk-hotplug-vm" -}}
 {{- $sshPublicKeySecretName := $vmName -}}

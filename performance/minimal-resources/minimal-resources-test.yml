@@ -1,8 +1,8 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := .testName | default "minimal-resources-test" }}
-{{- $nsName := .testNamespace | default "minimal-resources-test" -}}
+{{- $testName := .testName | default "cnv-minimal-resources" }}
+{{- $nsName := .testNamespace | default "cnv-minimal-resources" -}}
 {{- $vmCount := .vmCount | default 1 -}}
 {{- $vmName := .vmName | default "minimal-resources-vm" -}}
 {{- $jobCounterLabelKey := (list $testName "." $kubeBurnerFQDN "/counter") | join "" -}}

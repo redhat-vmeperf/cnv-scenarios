@@ -2,8 +2,8 @@
 # Minimal large disk size for validation
 
 # Test Configuration
-testNamespace: "sanity-large-disk-TIMESTAMP"  # TIMESTAMP replaced at runtime
-testName: 'sanity-large-disk'
+testNamespace: "cnv-sanity-large-disk-TIMESTAMP"  # TIMESTAMP replaced at runtime
+testName: 'cnv-sanity-large-disk'
 resultsPath: "/tmp/kube-burner-results/sanity-large-disk"
 runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 
@@ -44,7 +44,8 @@ jobPause: "1m"
 # Node Targeting Configuration (optional)
 nodeSelector: ""
 
-# Monitoring Configuration (disabled for sanity)
+# Monitoring Configuration (ES enabled, Prometheus disabled for sanity)
 esServer: ""
+metadataIndex: "cnv-metadata"
 PROM: ""
 PROM_TOKEN: ""

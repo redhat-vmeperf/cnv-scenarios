@@ -15,8 +15,8 @@
 #
 
 # Test Configuration
-testNamespace: "nic-hotplug-test"          # Namespace where test resources will be created
-testName: 'nic-hotplug-test'               # Test identifier used for labeling and metrics
+testNamespace: "cnv-nic-hotplug"           # Namespace where test resources will be created
+testName: 'cnv-nic-hotplug'                # Test identifier used for labeling and metrics (ES index)
 
 # Results Directory Structure
 resultsPath: "/tmp/kube-burner-results/nic-hotplug-test"  # Base directory for test results
@@ -55,7 +55,8 @@ publicKey: '/home/kni/.ssh/id_rsa.pub'    # Path to SSH public key file
 vmUser: 'cloud-user'                       # Username for SSH access to VMs
 
 # Monitoring Configuration (Optional)
-esServer: http://f01-h08-000-1029u.rdu2.scalelab.redhat.com:9200  # Elasticsearch server for metrics storage
+esServer: ""  # Elasticsearch server for metrics storage
+metadataIndex: "cnv-metadata"                    # Elasticsearch index for run metadata
 PROM: ""                                   # Prometheus endpoint (set via environment to enable monitoring)
 PROM_TOKEN: ""                             # Prometheus token (set via environment to enable monitoring)
 

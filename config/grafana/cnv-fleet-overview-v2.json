@@ -1,0 +1,1404 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "CNV fleet overview v2 with version matrix, trends, workload profiles, and recent runs",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 30,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Run Explorer v2",
+      "tooltip": "Browse and filter CNV test runs",
+      "type": "link",
+      "url": "/d/cnv-run-explorer-v2/cnv-run-explorer-v2"
+    },
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Run Detail v2",
+      "tooltip": "Deep-dive into a single run",
+      "type": "link",
+      "url": "/d/cnv-run-detail-v2/cnv-run-detail-v2"
+    },
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Run Comparison v2",
+      "tooltip": "Compare two runs side-by-side",
+      "type": "link",
+      "url": "/d/cnv-run-comparison-v3/cnv-run-comparison-v3"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Key Performance Indicators",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "metricName.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Total Runs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "metricName.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion AND testResult.keyword: SUCCESS",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Success Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "1d",
+                "min_doc_count": "0"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "durationSeconds",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Avg Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "metricName.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "cluster.clusterId.keyword",
+              "id": "1",
+              "type": "cardinality"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Environments Tested",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 101,
+      "title": "Version Matrix",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 7
+      },
+      "id": 5,
+      "options": {
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "{{term testResult.keyword}}",
+          "bucketAggs": [
+            {
+              "field": "operators.cnvVersion.keyword",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "testResult.keyword",
+              "id": "4",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "5"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Runs by CNV Version",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 7
+      },
+      "id": 6,
+      "options": {
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "{{term testResult.keyword}}",
+          "bucketAggs": [
+            {
+              "field": "cluster.ocpVersion.keyword",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "testResult.keyword",
+              "id": "4",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "5"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Runs by OCP Version",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": true
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 7
+      },
+      "id": 7,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "operators.cnvVersion.keyword",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "cluster.ocpVersion.keyword",
+              "id": "4",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "operators.odfVersion.keyword",
+              "id": "5",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "testConfig.storageClassName.keyword",
+              "id": "6",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Version Inventory",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Count": "Runs",
+              "cluster.ocpVersion.keyword": "OCP Version",
+              "operators.cnvVersion.keyword": "CNV Version",
+              "operators.odfVersion.keyword": "ODF Version",
+              "testConfig.storageClassName.keyword": "Storage Class"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 102,
+      "title": "Trends Over Time",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SUCCESS"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FAILURE"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "Success",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "7d"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion AND testResult.keyword: SUCCESS",
+          "refId": "A",
+          "timeField": "timestamp"
+        },
+        {
+          "alias": "Failure",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "7d"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion AND testResult.keyword: FAILURE",
+          "refId": "B",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run Count Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 1
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "Avg Duration",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "1d"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "durationSeconds",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Duration Trend",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 103,
+      "title": "Workload Profile",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 25
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut"
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "testName.keyword",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Test Distribution",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 25
+      },
+      "id": 11,
+      "options": {
+        "barWidth": 0.9,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "testConfig.vmCount",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "VM Count Distribution",
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "string",
+                "targetField": "testConfig.vmCount"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Count": "Runs",
+              "testConfig.vmCount": "VM Count"
+            }
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "id": 12,
+      "options": {
+        "barWidth": 0.9,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "testName.keyword",
+              "id": "3",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "1",
+                "size": "20"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "durationSeconds",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Avg Duration per Workload",
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 104,
+      "title": "Recent Runs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background-solid"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "SUCCESS": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "SUCCESS"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "FAILURE": {
+                        "color": "red",
+                        "index": 1,
+                        "text": "FAILURE"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UUID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "View Run Detail",
+                    "url": "/d/cnv-run-detail-v2/cnv-run-detail-v2?var-uuid=${__value.text}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 13,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "25"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion AND cluster.ocpVersion.keyword: $ocpVersion",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Recent Runs",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "replace": false,
+            "source": "testConfig"
+          }
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "replace": false,
+            "source": "operators"
+          }
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "replace": false,
+            "source": "cluster"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_index": true,
+              "_type": true,
+              "cluster": true,
+              "clusterId": true,
+              "cpuCores": true,
+              "exitCode": true,
+              "highlight": true,
+              "infraCount": true,
+              "kubeBurnerVersion": true,
+              "masterCount": true,
+              "memory": true,
+              "metricName": true,
+              "networkType": true,
+              "nodes": true,
+              "odfVersion": true,
+              "operators": true,
+              "platformType": true,
+              "resultsDir": true,
+              "runTimestamp": true,
+              "runtimeConfig": true,
+              "sort": true,
+              "storage": true,
+              "testCategory": true,
+              "testConfig": true,
+              "testMode": true,
+              "totalNodes": true,
+              "validationSummary": true,
+              "varsFile": true,
+              "workerCount": true
+            },
+            "indexByName": {
+              "cnvVersion": 3,
+              "durationSeconds": 5,
+              "ocpVersion": 4,
+              "storageClassName": 6,
+              "testName": 1,
+              "testResult": 2,
+              "timestamp": 0,
+              "uuid": 8,
+              "vmCount": 7
+            },
+            "renameByName": {
+              "cnvVersion": "CNV Version",
+              "durationSeconds": "Duration",
+              "ocpVersion": "OCP Version",
+              "storageClassName": "Storage Class",
+              "testName": "Test",
+              "testResult": "Result",
+              "timestamp": "Time",
+              "uuid": "UUID",
+              "vmCount": "VMs"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "cnv",
+    "fleet",
+    "overview",
+    "v2"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": "*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "includeAll": true,
+        "label": "CNV Version",
+        "multi": true,
+        "name": "cnvVersion",
+        "query": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata\"}",
+        "refresh": 2,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": "*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "includeAll": true,
+        "label": "OCP Version",
+        "multi": true,
+        "name": "ocpVersion",
+        "query": "{\"find\": \"terms\", \"field\": \"cluster.ocpVersion.keyword\", \"query\": \"metricName.keyword: metadata AND operators.cnvVersion.keyword: $cnvVersion\"}",
+        "refresh": 2,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": "*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "includeAll": true,
+        "label": "Storage Class",
+        "multi": true,
+        "name": "storageClass",
+        "query": "{\"find\": \"terms\", \"field\": \"testConfig.storageClassName.keyword\", \"query\": \"metricName.keyword: metadata\"}",
+        "refresh": 2,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "CNV Fleet Overview v2",
+  "uid": "cnv-fleet-overview-v2",
+  "version": 3,
+  "weekStart": ""
+}

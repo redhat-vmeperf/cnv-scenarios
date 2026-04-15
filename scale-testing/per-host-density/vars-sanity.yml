@@ -2,15 +2,16 @@
 # Minimal VM count for quick validation
 
 # Test Configuration
-testNamespace: "sanity-per-host-density-TIMESTAMP"  # TIMESTAMP replaced at runtime
-testName: 'sanity-per-host-density'
+testNamespace: "cnv-sanity-per-host-density-TIMESTAMP"  # TIMESTAMP replaced at runtime
+testName: 'cnv-sanity-per-host-density'
 resultsPath: "/tmp/kube-burner-results/sanity-per-host-density"
 runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 
 # Scale Mode Configuration
 scaleMode: "single-node"                # Keep simple for sanity tests
 namespaceCount: 1                       # Single namespace for sanity
-testNamespacePrefix: "sanity-per-host-density"
+# Include TIMESTAMP so parallel/sequential runs get unique kube-burner namespaces (…-0, …-1).
+testNamespacePrefix: "cnv-sanity-per-host-density-TIMESTAMP"
 
 # VM Scaling Configuration (minimal)
 vmsPerNamespace: 2                      # Minimal VMs for sanity
@@ -66,8 +67,9 @@ burstStartup: 20
 maxWaitTimeout: "5m"
 jobPause: "30s"
 
-# Monitoring Configuration (disabled for sanity)
+# Monitoring Configuration (ES enabled, Prometheus disabled for sanity)
 esServer: ""
+metadataIndex: "cnv-metadata"
 PROM: ""
 PROM_TOKEN: ""
 

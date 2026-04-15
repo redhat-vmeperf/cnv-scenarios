@@ -2,8 +2,8 @@
 # Minimal resources for quick validation testing
 
 # Test Configuration
-testNamespace: "sanity-memory-limits-TIMESTAMP"  # TIMESTAMP replaced at runtime
-testName: 'sanity-memory-limits'
+testNamespace: "cnv-sanity-memory-limits-TIMESTAMP"  # TIMESTAMP replaced at runtime
+testName: 'cnv-sanity-memory-limits'
 resultsPath: "/tmp/kube-burner-results/sanity-memory-limits"
 runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 
@@ -38,8 +38,9 @@ vmRunning: true
 maxWaitTimeout: "5m"
 jobPause: "1m"
 
-# Monitoring Configuration (disabled for sanity)
+# Monitoring Configuration (ES enabled, Prometheus disabled for sanity)
 esServer: ""
+metadataIndex: "cnv-metadata"
 PROM: ""
 PROM_TOKEN: ""
 

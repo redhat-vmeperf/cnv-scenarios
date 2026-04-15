@@ -1,6 +1,6 @@
 # Virt-Capacity-Benchmark Test Configuration
-testNamespace: "kube-burner-capacity-custom"
-testName: 'virt-capacity-benchmark'
+testNamespace: "cnv-virt-capacity-benchmark"
+testName: 'cnv-virt-capacity-benchmark'
 resultsPath: "/tmp/kube-burner-results/virt-capacity-benchmark"
 runTimestamp: "run-default"
 
@@ -36,6 +36,7 @@ skipResizeJob: true
 cleanup: true
 
 # Monitoring Configuration
-esServer: http://f01-h08-000-1029u.rdu2.scalelab.redhat.com:9200
+esServer: ""
+metadataIndex: "cnv-metadata"
 PROM: '' 
 PROM_TOKEN: '' 

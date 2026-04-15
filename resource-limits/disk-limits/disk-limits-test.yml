@@ -1,8 +1,8 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := "disk-limits-test" }}
-{{- $nsName := .testNamespace | default "disk-limits-test" -}}
+{{- $testName := "cnv-disk-limits" }}
+{{- $nsName := .testNamespace | default "cnv-disk-limits" -}}
 {{- $vmCount := .vmCount | default 1 -}}
 {{- $vmName := "disk-test-vm" -}}
 {{- $sshPublicKeySecretName := $vmName -}}

@@ -1,0 +1,2599 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "green",
+        "name": "Run A",
+        "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+        "textField": "uuid",
+        "timeField": "timestamp",
+        "type": "elasticsearch"
+      },
+      {
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "blue",
+        "name": "Run B",
+        "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+        "textField": "uuid",
+        "timeField": "timestamp",
+        "type": "elasticsearch"
+      }
+    ]
+  },
+  "description": "Side-by-side comparison of two CNV test runs (v2) with cascading workload/version selection, environment diff, validation comparison, and Prometheus metric overlay",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 32,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [
+        "cnv"
+      ],
+      "targetBlank": true,
+      "title": "Fleet Overview v2",
+      "tooltip": "Fleet health overview",
+      "type": "link",
+      "url": "/d/cnv-fleet-overview-v2/cnv-fleet-overview-v2"
+    },
+    {
+      "icon": "external link",
+      "tags": [
+        "cnv"
+      ],
+      "targetBlank": true,
+      "title": "Run Detail v2",
+      "tooltip": "Deep-dive into a single run",
+      "type": "link",
+      "url": "/d/cnv-run-detail-v2/cnv-run-detail-v2"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Run Identity",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "SUCCESS": {
+                  "color": "green",
+                  "index": 0
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "FAILURE": {
+                  "color": "red",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/testResult/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A Result",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/durationSeconds/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "uuid.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "testConfig.vmCount",
+              "id": "1",
+              "settings": {
+                "script": "def nsCount = 1; def vmsPerNs = _value; if (doc.containsKey('runtimeConfig.namespaceCount.keyword') && doc['runtimeConfig.namespaceCount.keyword'].size() > 0) { nsCount = Integer.parseInt(doc['runtimeConfig.namespaceCount.keyword'].value); } if (doc.containsKey('runtimeConfig.vmsPerNamespace.keyword') && doc['runtimeConfig.vmsPerNamespace.keyword'].size() > 0) { vmsPerNs = Integer.parseInt(doc['runtimeConfig.vmsPerNamespace.keyword'].value); } return nsCount * vmsPerNs;"
+              },
+              "type": "max"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A VM Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "SUCCESS": {
+                  "color": "green",
+                  "index": 0
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "FAILURE": {
+                  "color": "red",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/testResult/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B Result",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 5
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/durationSeconds/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "uuid.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "1"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "testConfig.vmCount",
+              "id": "1",
+              "settings": {
+                "script": "def nsCount = 1; def vmsPerNs = _value; if (doc.containsKey('runtimeConfig.namespaceCount.keyword') && doc['runtimeConfig.namespaceCount.keyword'].size() > 0) { nsCount = Integer.parseInt(doc['runtimeConfig.namespaceCount.keyword'].value); } if (doc.containsKey('runtimeConfig.vmsPerNamespace.keyword') && doc['runtimeConfig.vmsPerNamespace.keyword'].size() > 0) { vmsPerNs = Integer.parseInt(doc['runtimeConfig.vmsPerNamespace.keyword'].value); } return nsCount * vmsPerNs;"
+              },
+              "type": "max"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B VM Count",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 101,
+      "title": "Environment Comparison",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "SUCCESS": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "FAILURE": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "A",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        },
+        {
+          "alias": "B",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "B",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Version Comparison",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "testResult",
+                "cluster.ocpVersion",
+                "operators.cnvVersion",
+                "operators.odfVersion",
+                "operators.hcoVersion",
+                "operators.nmstateVersion",
+                "operators.sriovVersion",
+                "kubeBurnerVersion"
+              ]
+            }
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "cluster.ocpVersion": 1,
+              "kubeBurnerVersion": 7,
+              "operators.cnvVersion": 2,
+              "operators.hcoVersion": 4,
+              "operators.nmstateVersion": 5,
+              "operators.odfVersion": 3,
+              "operators.sriovVersion": 6,
+              "testResult": 0
+            },
+            "renameByName": {
+              "cluster.ocpVersion": "OCP",
+              "kubeBurnerVersion": "kube-burner",
+              "operators.cnvVersion": "CNV",
+              "operators.hcoVersion": "HCO",
+              "operators.nmstateVersion": "NMState",
+              "operators.odfVersion": "ODF",
+              "operators.sriovVersion": "SR-IOV",
+              "testResult": "Result"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "SUCCESS": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "FAILURE": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 15,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "A",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        },
+        {
+          "alias": "B",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "B",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Infrastructure Comparison",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "testResult",
+                "cluster.platform",
+                "cluster.networkType",
+                "testConfig.storageClassName",
+                "nodes.workers",
+                "nodes.masters",
+                "nodes.total"
+              ]
+            }
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "cluster.networkType": 2,
+              "cluster.platform": 1,
+              "nodes.masters": 5,
+              "nodes.total": 6,
+              "nodes.workers": 4,
+              "testConfig.storageClassName": 3,
+              "testResult": 0
+            },
+            "renameByName": {
+              "cluster.networkType": "Network",
+              "cluster.platform": "Platform",
+              "nodes.masters": "Masters",
+              "nodes.total": "Total Nodes",
+              "nodes.workers": "Workers",
+              "testConfig.storageClassName": "Storage Class",
+              "testResult": "Result"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 17,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "A",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A Test Config",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "nodes.workers",
+                "nodes.masters",
+                "nodes.total",
+                "cluster.platform",
+                "testConfig.cpuCores",
+                "testConfig.memory",
+                "testConfig.storageClassName",
+                "testConfig.vmCount"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "cluster.platform": "Platform",
+              "nodes.masters": "Masters",
+              "nodes.total": "Total Nodes",
+              "nodes.workers": "Workers",
+              "testConfig.cpuCores": "CPU Cores",
+              "testConfig.memory": "Memory",
+              "testConfig.storageClassName": "Storage Class",
+              "testConfig.vmCount": "VM Count"
+            }
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Field": "Property",
+              "Last *": "Value"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 18,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "A",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B Test Config",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "nodes.workers",
+                "nodes.masters",
+                "nodes.total",
+                "cluster.platform",
+                "testConfig.cpuCores",
+                "testConfig.memory",
+                "testConfig.storageClassName",
+                "testConfig.vmCount"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "cluster.platform": "Platform",
+              "nodes.masters": "Masters",
+              "nodes.total": "Total Nodes",
+              "nodes.workers": "Workers",
+              "testConfig.cpuCores": "CPU Cores",
+              "testConfig.memory": "Memory",
+              "testConfig.storageClassName": "Storage Class",
+              "testConfig.vmCount": "VM Count"
+            }
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Field": "Property",
+              "Last *": "Value"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 102,
+      "title": "Runtime Config Comparison",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "id": 16,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "A",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A Runtime Config",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "runtimeConfig.burstCreate",
+                "runtimeConfig.burstShutdown",
+                "runtimeConfig.burstStartup",
+                "runtimeConfig.imageUrl",
+                "runtimeConfig.jobPause",
+                "runtimeConfig.max-iterations",
+                "runtimeConfig.maxWaitTimeout",
+                "runtimeConfig.max_ssh_retries",
+                "runtimeConfig.namespaceCount",
+                "runtimeConfig.nodeSelectorLabel",
+                "runtimeConfig.percentage_of_vms_to_validate",
+                "runtimeConfig.qpsCreate",
+                "runtimeConfig.qpsShutdown",
+                "runtimeConfig.qpsStartup",
+                "runtimeConfig.scaleMode",
+                "runtimeConfig.shutdownBatchSize",
+                "runtimeConfig.skipVmRestart",
+                "runtimeConfig.skipVmShutdown",
+                "runtimeConfig.sleepBetweenPhases",
+                "runtimeConfig.sourceStorageSize",
+                "runtimeConfig.storageClassName",
+                "runtimeConfig.targetNode",
+                "runtimeConfig.testNamespacePrefix",
+                "runtimeConfig.vmCpuCores",
+                "runtimeConfig.vmCpuLimit",
+                "runtimeConfig.vmCpuRequest",
+                "runtimeConfig.vmMemory",
+                "runtimeConfig.vmStorageSize",
+                "runtimeConfig.vmUser",
+                "runtimeConfig.vmsPerNamespace",
+                "runtimeConfig.workerNodeSelector"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "runtimeConfig.burstCreate": "burstCreate",
+              "runtimeConfig.burstShutdown": "burstShutdown",
+              "runtimeConfig.burstStartup": "burstStartup",
+              "runtimeConfig.imageUrl": "imageUrl",
+              "runtimeConfig.jobPause": "jobPause",
+              "runtimeConfig.max-iterations": "max-iterations",
+              "runtimeConfig.maxWaitTimeout": "maxWaitTimeout",
+              "runtimeConfig.max_ssh_retries": "max_ssh_retries",
+              "runtimeConfig.namespaceCount": "namespaceCount",
+              "runtimeConfig.nodeSelectorLabel": "nodeSelectorLabel",
+              "runtimeConfig.percentage_of_vms_to_validate": "percentage_of_vms_to_validate",
+              "runtimeConfig.qpsCreate": "qpsCreate",
+              "runtimeConfig.qpsShutdown": "qpsShutdown",
+              "runtimeConfig.qpsStartup": "qpsStartup",
+              "runtimeConfig.scaleMode": "scaleMode",
+              "runtimeConfig.shutdownBatchSize": "shutdownBatchSize",
+              "runtimeConfig.skipVmRestart": "skipVmRestart",
+              "runtimeConfig.skipVmShutdown": "skipVmShutdown",
+              "runtimeConfig.sleepBetweenPhases": "sleepBetweenPhases",
+              "runtimeConfig.sourceStorageSize": "sourceStorageSize",
+              "runtimeConfig.storageClassName": "storageClassName",
+              "runtimeConfig.targetNode": "targetNode",
+              "runtimeConfig.testNamespacePrefix": "testNamespacePrefix",
+              "runtimeConfig.vmCpuCores": "vmCpuCores",
+              "runtimeConfig.vmCpuLimit": "vmCpuLimit",
+              "runtimeConfig.vmCpuRequest": "vmCpuRequest",
+              "runtimeConfig.vmMemory": "vmMemory",
+              "runtimeConfig.vmStorageSize": "vmStorageSize",
+              "runtimeConfig.vmUser": "vmUser",
+              "runtimeConfig.vmsPerNamespace": "vmsPerNamespace",
+              "runtimeConfig.workerNodeSelector": "workerNodeSelector"
+            }
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Field": "Property",
+              "Last *": "Value"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "A",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuidB",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B Runtime Config",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "runtimeConfig.burstCreate",
+                "runtimeConfig.burstShutdown",
+                "runtimeConfig.burstStartup",
+                "runtimeConfig.imageUrl",
+                "runtimeConfig.jobPause",
+                "runtimeConfig.max-iterations",
+                "runtimeConfig.maxWaitTimeout",
+                "runtimeConfig.max_ssh_retries",
+                "runtimeConfig.namespaceCount",
+                "runtimeConfig.nodeSelectorLabel",
+                "runtimeConfig.percentage_of_vms_to_validate",
+                "runtimeConfig.qpsCreate",
+                "runtimeConfig.qpsShutdown",
+                "runtimeConfig.qpsStartup",
+                "runtimeConfig.scaleMode",
+                "runtimeConfig.shutdownBatchSize",
+                "runtimeConfig.skipVmRestart",
+                "runtimeConfig.skipVmShutdown",
+                "runtimeConfig.sleepBetweenPhases",
+                "runtimeConfig.sourceStorageSize",
+                "runtimeConfig.storageClassName",
+                "runtimeConfig.targetNode",
+                "runtimeConfig.testNamespacePrefix",
+                "runtimeConfig.vmCpuCores",
+                "runtimeConfig.vmCpuLimit",
+                "runtimeConfig.vmCpuRequest",
+                "runtimeConfig.vmMemory",
+                "runtimeConfig.vmStorageSize",
+                "runtimeConfig.vmUser",
+                "runtimeConfig.vmsPerNamespace",
+                "runtimeConfig.workerNodeSelector"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "runtimeConfig.burstCreate": "burstCreate",
+              "runtimeConfig.burstShutdown": "burstShutdown",
+              "runtimeConfig.burstStartup": "burstStartup",
+              "runtimeConfig.imageUrl": "imageUrl",
+              "runtimeConfig.jobPause": "jobPause",
+              "runtimeConfig.max-iterations": "max-iterations",
+              "runtimeConfig.maxWaitTimeout": "maxWaitTimeout",
+              "runtimeConfig.max_ssh_retries": "max_ssh_retries",
+              "runtimeConfig.namespaceCount": "namespaceCount",
+              "runtimeConfig.nodeSelectorLabel": "nodeSelectorLabel",
+              "runtimeConfig.percentage_of_vms_to_validate": "percentage_of_vms_to_validate",
+              "runtimeConfig.qpsCreate": "qpsCreate",
+              "runtimeConfig.qpsShutdown": "qpsShutdown",
+              "runtimeConfig.qpsStartup": "qpsStartup",
+              "runtimeConfig.scaleMode": "scaleMode",
+              "runtimeConfig.shutdownBatchSize": "shutdownBatchSize",
+              "runtimeConfig.skipVmRestart": "skipVmRestart",
+              "runtimeConfig.skipVmShutdown": "skipVmShutdown",
+              "runtimeConfig.sleepBetweenPhases": "sleepBetweenPhases",
+              "runtimeConfig.sourceStorageSize": "sourceStorageSize",
+              "runtimeConfig.storageClassName": "storageClassName",
+              "runtimeConfig.targetNode": "targetNode",
+              "runtimeConfig.testNamespacePrefix": "testNamespacePrefix",
+              "runtimeConfig.vmCpuCores": "vmCpuCores",
+              "runtimeConfig.vmCpuLimit": "vmCpuLimit",
+              "runtimeConfig.vmCpuRequest": "vmCpuRequest",
+              "runtimeConfig.vmMemory": "vmMemory",
+              "runtimeConfig.vmStorageSize": "vmStorageSize",
+              "runtimeConfig.vmUser": "vmUser",
+              "runtimeConfig.vmsPerNamespace": "vmsPerNamespace",
+              "runtimeConfig.workerNodeSelector": "workerNodeSelector"
+            }
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Field": "Property",
+              "Last *": "Value"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "id": 103,
+      "title": "Validation Comparison",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "phaseStatus"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "PASS": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "FAIL": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 37
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "10"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "uuid.keyword: $uuidA",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A Validation",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_index": true,
+              "_type": true,
+              "metricName": true
+            },
+            "indexByName": {
+              "details": 3,
+              "duration": 2,
+              "phaseName": 0,
+              "phaseStatus": 1
+            },
+            "renameByName": {
+              "details": "Details",
+              "duration": "Duration",
+              "phaseName": "Phase",
+              "phaseStatus": "Status"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "phaseStatus"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "PASS": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "FAIL": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 37
+      },
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "10"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "uuid.keyword: $uuidB",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B Validation",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_index": true,
+              "_type": true,
+              "metricName": true
+            },
+            "indexByName": {
+              "details": 3,
+              "duration": 2,
+              "phaseName": 0,
+              "phaseStatus": 1
+            },
+            "renameByName": {
+              "details": "Details",
+              "duration": "Duration",
+              "phaseName": "Phase",
+              "phaseStatus": "Status"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "id": 104,
+      "title": "VMI Latency Comparison",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 46
+      },
+      "id": 11,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "quantileName.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "10"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "bootSeconds",
+              "id": "1",
+              "meta": {},
+              "type": "avg"
+            },
+            {
+              "field": "provisionSeconds",
+              "id": "2",
+              "meta": {},
+              "type": "avg"
+            },
+            {
+              "field": "readySeconds",
+              "id": "3",
+              "meta": {},
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuidA AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run A VMI Latency",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 46
+      },
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "quantileName.keyword",
+              "id": "2",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_term",
+                "size": "10"
+              },
+              "type": "terms"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "bootSeconds",
+              "id": "1",
+              "meta": {},
+              "type": "avg"
+            },
+            {
+              "field": "provisionSeconds",
+              "id": "2",
+              "meta": {},
+              "type": "avg"
+            },
+            {
+              "field": "readySeconds",
+              "id": "3",
+              "meta": {},
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuidB AND metricName.keyword: vmiLatencyQuantilesMeasurement AND quantileName.keyword: $latencyPercentile",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Run B VMI Latency",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "id": 105,
+      "title": "Metric Overlay",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "alias": "Run A",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "value",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuidA AND metricName.keyword: $metricToCompare",
+          "refId": "A",
+          "timeField": "timestamp"
+        },
+        {
+          "alias": "Run B",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "value",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuidB AND metricName.keyword: $metricToCompare",
+          "refId": "B",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Metric Overlay",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 63
+      },
+      "id": 106,
+      "title": "Historical Trends",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 64
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "field": "durationSeconds",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND testName.keyword: $workload",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Historical Duration Trend",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "cnv",
+    "comparison",
+    "v2"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "{\"find\": \"terms\", \"field\": \"testName.keyword\", \"query\": \"metricName.keyword: metadata\"}",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Workload",
+        "multi": false,
+        "name": "workload",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"testName.keyword\", \"query\": \"metricName.keyword: metadata\"}",
+        "queryValue": "",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "hide": 0,
+        "includeAll": false,
+        "label": "CNV Version (A)",
+        "multi": false,
+        "name": "cnvVersionA",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "queryValue": "",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND operators.cnvVersion.keyword: $cnvVersionA\"}",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Run A (UUID)",
+        "multi": false,
+        "name": "uuidA",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND operators.cnvVersion.keyword: $cnvVersionA\"}",
+        "queryValue": "",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "hide": 0,
+        "includeAll": false,
+        "label": "CNV Version (B)",
+        "multi": false,
+        "name": "cnvVersionB",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "queryValue": "",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND operators.cnvVersion.keyword: $cnvVersionB\"}",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Run B (UUID)",
+        "multi": false,
+        "name": "uuidB",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND operators.cnvVersion.keyword: $cnvVersionB\"}",
+        "queryValue": "",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "P99",
+          "value": "P99"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Latency Percentile",
+        "multi": false,
+        "name": "latencyPercentile",
+        "options": [
+          {
+            "selected": true,
+            "text": "P99",
+            "value": "P99"
+          },
+          {
+            "selected": false,
+            "text": "P95",
+            "value": "P95"
+          },
+          {
+            "selected": false,
+            "text": "P50",
+            "value": "P50"
+          }
+        ],
+        "query": "P99 : P99,P95 : P95,P50 : P50",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "nodeCPU",
+          "value": "nodeCPU"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Metric",
+        "multi": false,
+        "name": "metricToCompare",
+        "options": [
+          {
+            "selected": true,
+            "text": "nodeCPU",
+            "value": "nodeCPU"
+          },
+          {
+            "selected": false,
+            "text": "nodeMemoryAvailable",
+            "value": "nodeMemoryAvailable"
+          },
+          {
+            "selected": false,
+            "text": "nodeDiskWrittenBytes",
+            "value": "nodeDiskWrittenBytes"
+          },
+          {
+            "selected": false,
+            "text": "nodeDiskReadBytes",
+            "value": "nodeDiskReadBytes"
+          },
+          {
+            "selected": false,
+            "text": "kubevirtCPU",
+            "value": "kubevirtCPU"
+          },
+          {
+            "selected": false,
+            "text": "kubevirtMemory",
+            "value": "kubevirtMemory"
+          },
+          {
+            "selected": false,
+            "text": "kubevirtAPIRequestRate",
+            "value": "kubevirtAPIRequestRate"
+          },
+          {
+            "selected": false,
+            "text": "kubevirtWorkQueueDepth",
+            "value": "kubevirtWorkQueueDepth"
+          },
+          {
+            "selected": false,
+            "text": "kubevirtWorkQueueAddRate",
+            "value": "kubevirtWorkQueueAddRate"
+          },
+          {
+            "selected": false,
+            "text": "APIRequestRate",
+            "value": "APIRequestRate"
+          },
+          {
+            "selected": false,
+            "text": "99thEtcdDiskWalFsync",
+            "value": "99thEtcdDiskWalFsync"
+          },
+          {
+            "selected": false,
+            "text": "99thEtcdDiskBackendCommit",
+            "value": "99thEtcdDiskBackendCommit"
+          },
+          {
+            "selected": false,
+            "text": "etcdDBSize",
+            "value": "etcdDBSize"
+          },
+          {
+            "selected": false,
+            "text": "nodeNetworkBytesReceived",
+            "value": "nodeNetworkBytesReceived"
+          },
+          {
+            "selected": false,
+            "text": "nodeNetworkBytesTransmitted",
+            "value": "nodeNetworkBytesTransmitted"
+          },
+          {
+            "selected": false,
+            "text": "containerCPU",
+            "value": "containerCPU"
+          }
+        ],
+        "query": "nodeCPU : nodeCPU,nodeMemoryAvailable : nodeMemoryAvailable,nodeDiskWrittenBytes : nodeDiskWrittenBytes,nodeDiskReadBytes : nodeDiskReadBytes,kubevirtCPU : kubevirtCPU,kubevirtMemory : kubevirtMemory,kubevirtAPIRequestRate : kubevirtAPIRequestRate,kubevirtWorkQueueDepth : kubevirtWorkQueueDepth,kubevirtWorkQueueAddRate : kubevirtWorkQueueAddRate,APIRequestRate : APIRequestRate,99thEtcdDiskWalFsync : 99thEtcdDiskWalFsync,99thEtcdDiskBackendCommit : 99thEtcdDiskBackendCommit,etcdDBSize : etcdDBSize,nodeNetworkBytesReceived : nodeNetworkBytesReceived,nodeNetworkBytesTransmitted : nodeNetworkBytesTransmitted,containerCPU : containerCPU",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d",
+      "90d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "CNV Run Comparison v2",
+  "uid": "cnv-run-comparison-v2",
+  "version": 15,
+  "weekStart": ""
+}

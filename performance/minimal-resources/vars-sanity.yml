@@ -2,8 +2,8 @@
 # Tests with absolute minimum resources
 
 # Test Configuration
-testNamespace: "sanity-minimal-resources-TIMESTAMP"  # TIMESTAMP replaced at runtime
-testName: 'sanity-minimal-resources'
+testNamespace: "cnv-sanity-minimal-resources-TIMESTAMP"  # TIMESTAMP replaced at runtime
+testName: 'cnv-sanity-minimal-resources'
 resultsPath: "/tmp/kube-burner-results/sanity-minimal-resources"
 runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 
@@ -37,8 +37,9 @@ nodeSelector: ""
 vmUser: 'cirros'
 vmPassword: 'gocubsgo'  # CirrOS default password
 
-# Monitoring Configuration (disabled for sanity)
+# Monitoring Configuration (ES enabled, Prometheus disabled for sanity)
 esServer: ""
+metadataIndex: "cnv-metadata"
 PROM: ""
 PROM_TOKEN: ""
 

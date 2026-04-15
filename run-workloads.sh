@@ -141,6 +141,23 @@ get_yaml_value() {
     echo "$default"
 }
 
+refresh_prometheus_token() {
+    if [[ -z "$PROM" ]]; then
+        PROM="https://$(oc get route -n openshift-monitoring prometheus-k8s -o jsonpath='{.spec.host}' 2>/dev/null)" || true
+        if [[ -n "$PROM" ]]; then
+            logmain INFO "Prometheus URL detected: $PROM"
+        fi
+    fi
+    if [[ -z "$PROM_TOKEN_MANUAL" ]]; then
+        if [[ -n "$PROM" ]]; then
+            PROM_TOKEN="$(oc create token -n openshift-monitoring prometheus-k8s --duration=1h 2>/dev/null)" || true
+            if [[ -n "$PROM_TOKEN" ]]; then
+                logmain DEBUG "Refreshed Prometheus token"
+            fi
+        fi
+    fi
+}
+
 # Parse test registry entry
 parse_registry() {
     local entry="$1"
@@ -252,7 +269,10 @@ setup_per_host_density() {
 }
 
 # Setup for nic-hotplug test
+# Args: $1 = processed kube-burner vars file path (materialize baseInterface / nicCount into this file)
 setup_nic_hotplug() {
+    local temp_vars="${1:-}"
+
     if [[ -z "$baseInterface" ]]; then
         local detect_script="${SCRIPT_DIR}/config/scripts/detect-available-interface.sh"
         if [[ -x "$detect_script" ]]; then
@@ -272,11 +292,15 @@ setup_nic_hotplug() {
             return 1
         fi
     fi
-    
-    # Determine nicCount: CLI env var > vars file > default
+
+    # Determine nicCount: CLI env var > processed vars > source vars by mode > default
     local effective_nic_count="${nicCount:-}"
     if [[ -z "$effective_nic_count" ]]; then
-        # Read from vars file based on MODE
+        if [[ -n "$temp_vars" && -f "$temp_vars" ]]; then
+            effective_nic_count=$(grep "^nicCount:" "$temp_vars" 2>/dev/null | awk '{print $2}')
+        fi
+    fi
+    if [[ -z "$effective_nic_count" ]]; then
         local vars_file="${SCRIPT_DIR}/hot-plug/nic-hotplug/vars.yml"
         if [[ "$MODE" == "sanity" ]]; then
             vars_file="${SCRIPT_DIR}/hot-plug/nic-hotplug/vars-sanity.yml"
@@ -284,16 +308,24 @@ setup_nic_hotplug() {
         if [[ -f "$vars_file" ]]; then
             effective_nic_count=$(grep "^nicCount:" "$vars_file" 2>/dev/null | awk '{print $2}')
         fi
-        # Fallback to default if still empty
         effective_nic_count="${effective_nic_count:-25}"
     fi
-    
+
+    # Keep --user-data file aligned with effective values (kube-burner / operator forensics)
+    if [[ -n "$temp_vars" && -f "$temp_vars" ]]; then
+        sed -i "s#^baseInterface:.*#baseInterface: \"${baseInterface}\"#" "$temp_vars"
+        if [[ -n "${nicCount:-}" ]]; then
+            sed -i "s#^nicCount:.*#nicCount: ${nicCount}#" "$temp_vars"
+        fi
+        logmain INFO "[nic-hotplug] Wrote effective baseInterface (and nicCount if set) to ${temp_vars}"
+    fi
+
     log ""
     log "NIC Configuration:"
     log "  baseInterface=${baseInterface}"
     log "  nicCount=${effective_nic_count}"
     log ""
-    
+
     return 0
 }
 
@@ -308,7 +340,7 @@ run_setup() {
             setup_per_host_density "$vars_file"
             ;;
         nic-hotplug)
-            setup_nic_hotplug
+            setup_nic_hotplug "$vars_file"
             ;;
         *)
             # No special setup needed
@@ -437,14 +469,24 @@ run_single_test() {
     local results_path="${RESULTS_BASE}/${test_name}/${run_timestamp}"
     mkdir -p "$results_path"
     
-    # Create temporary vars file with TIMESTAMP replaced and correct paths
+    refresh_prometheus_token
     local unique_suffix="$(date +%Y%m%d-%H%M%S)-$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 4 | head -n 1)"
     local temp_vars="${results_path}/vars-${test_name}-${MODE}.${ext}"
     sed -e "s/TIMESTAMP/${unique_suffix}/g" \
         -e "s|^resultsPath:.*|resultsPath: \"${RESULTS_BASE}/${test_name}\"|" \
         -e "s|^runTimestamp:.*|runTimestamp: \"${run_timestamp}\"|" \
         "$vars_file" > "$temp_vars"
-    
+    if [[ -n "$PROM" ]]; then
+        sed -i "s|^PROM:.*|PROM: \"${PROM}\"|" "$temp_vars"
+    fi
+    if [[ -n "$PROM_TOKEN" ]]; then
+        sed -i "s|^PROM_TOKEN:.*|PROM_TOKEN: \"${PROM_TOKEN}\"|" "$temp_vars"
+    fi
+    # Enable kube-burner Elasticsearch indexer (nic-hotplug-test.yml gates on .esServer)
+    if [[ -n "${esServer:-}" ]]; then
+        sed -i "s#^esServer:.*#esServer: \"${esServer}\"#" "$temp_vars"
+    fi
+
     logmain INFO "[$test_name] Starting test"
     logmain INFO "[$test_name] Mode: $MODE"
     logmain INFO "[$test_name] Config: $config_file"
@@ -503,10 +545,89 @@ run_single_test() {
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
-    # Get validation info
+    # Get validation info (needed by metadata-collector for enrichment)
     local val_info=$(get_validation_info "$results_path" "$test_name")
     local val_status=$(echo "$val_info" | cut -d'|' -f1)
     local val_file=$(echo "$val_info" | cut -d'|' -f2)
+
+    # Collect and index cluster metadata (correlated via kube-burner UUID)
+    local kb_uuid=""
+    local metadata_file=""
+    local job_summary=$(find "$results_path" -name "jobSummary.json" -type f 2>/dev/null | head -1)
+    if [[ -n "$job_summary" && -f "$job_summary" ]]; then
+        kb_uuid=$(jq -r '.[0].uuid // ""' "$job_summary" 2>/dev/null)
+    fi
+    if [[ -n "$kb_uuid" ]]; then
+        local es_server=$(get_yaml_value "esServer" "$temp_vars" "")
+        local test_name_var=$(get_yaml_value "testName" "$temp_vars" "$test_name")
+        local metadata_index=$(get_yaml_value "metadataIndex" "$temp_vars" "cnv-metadata")
+        
+        logmain INFO "[$test_name] Collecting metadata (UUID: ${kb_uuid})"
+        if "${SCRIPT_DIR}/config/scripts/metadata-collector.sh" \
+            --uuid "$kb_uuid" \
+            --test-name "$test_name" \
+            --mode "$MODE" \
+            --run-timestamp "$run_timestamp" \
+            --vars-file "$temp_vars" \
+            --results-dir "$results_path" \
+            --exit-code "$exit_code" \
+            --duration "$duration" \
+            --validation-dir "$results_path" \
+            ${es_server:+--es-server "$es_server"} \
+            --metadata-index "$metadata_index" \
+            ${test_name_var:+--test-index "$test_name_var"}; then
+            metadata_file="${results_path}/metadata.json"
+            logmain INFO "[$test_name] Metadata collection complete"
+        else
+            logmain INFO "[$test_name] WARNING: Metadata collection failed (non-fatal)"
+        fi
+
+        # Index validation reports to ES (separate cnv-validation index)
+        if [[ -n "$es_server" ]]; then
+            logmain INFO "[$test_name] Indexing validation reports to ES..."
+            if "${SCRIPT_DIR}/config/scripts/validation-indexer.sh" \
+                --uuid "$kb_uuid" \
+                --test-name "$test_name" \
+                --results-dir "$results_path" \
+                --es-server "$es_server"; then
+                logmain INFO "[$test_name] Validation indexing complete"
+            else
+                logmain INFO "[$test_name] WARNING: Validation indexing failed (non-fatal)"
+            fi
+        fi
+
+        if [[ -n "$PROM" && -n "$PROM_TOKEN" ]]; then
+            logmain INFO "[$test_name] Collecting Prometheus alerts..."
+            local test_start_iso=$(date -d "@$start_time" -Iseconds 2>/dev/null || date -r "$start_time" -Iseconds 2>/dev/null)
+            local test_end_iso=$(date -Iseconds)
+            "${SCRIPT_DIR}/config/scripts/alert-collector.sh" \
+                --uuid "$kb_uuid" \
+                --test-name "$test_name" \
+                --start-time "$test_start_iso" \
+                --end-time "$test_end_iso" \
+                --prom-url "$PROM" \
+                --prom-token "$PROM_TOKEN" \
+                --es-server "$es_server" \
+                --results-dir "$results_path" || true
+            logmain INFO "[$test_name] Alert collection complete"
+        fi
+
+        # Index kube-burner and validation logs to ES
+        if [[ -n "$es_server" ]]; then
+            logmain INFO "[$test_name] Indexing execution logs to ES..."
+            if python3 "${SCRIPT_DIR}/config/scripts/log-indexer.py" \
+                --uuid "$kb_uuid" \
+                --test-name "$test_name" \
+                --es-server "$es_server" \
+                --results-dir "$results_path"; then
+                logmain INFO "[$test_name] Log indexing complete"
+            else
+                logmain INFO "[$test_name] WARNING: Log indexing failed (non-fatal)"
+            fi
+        fi
+    else
+        logmain INFO "[$test_name] Skipping metadata collection (no kube-burner UUID found)"
+    fi
     
     # Store results
     TEST_RESULTS[$test_name]=$exit_code
@@ -532,6 +653,8 @@ run_single_test() {
       --argjson val_files "$val_files_json" \
       --argjson duration "$duration" \
       --arg timestamp "$(date -Iseconds)" \
+      --arg uuid "${kb_uuid:-}" \
+      --arg metadata_file "${metadata_file:-}" \
       '{
         test: $test,
         mode: $mode,
@@ -541,7 +664,9 @@ run_single_test() {
         validation_status: $val_status,
         validation_files: $val_files,
         duration_seconds: $duration,
-        timestamp: $timestamp
+        timestamp: $timestamp,
+        uuid: $uuid,
+        metadata_file: $metadata_file
       }' > "$summary_json"
     
     # Run test-specific cleanup (e.g., delete namespaces if cleanup=true)
@@ -926,7 +1051,8 @@ main() {
     logmain INFO "Starting VME Test Suite"
     logmain INFO "Mode: $MODE | Execution: $EXECUTION | Tests: ${tests_to_run[*]}"
     logmain INFO "Main log: $MAIN_LOG"
-    
+    refresh_prometheus_token
+
     # Run tests
     local exit_code=0
     if [[ ${#tests_to_run[@]} -eq 1 ]]; then

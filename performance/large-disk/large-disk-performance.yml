@@ -1,8 +1,8 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := .testName | default "large-disk-performance" }}
-{{- $nsName := .testNamespace | default "large-disk-performance" -}}
+{{- $testName := .testName | default "cnv-large-disk" }}
+{{- $nsName := .testNamespace | default "cnv-large-disk" -}}
 {{- $vmCount := .vmCount | default 1 -}}
 {{- $vmName := .vmName | default "large-disk-vm" -}}
 {{- $sshPublicKeySecretName := $vmName -}}

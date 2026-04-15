@@ -4,7 +4,8 @@
   "metadata": {
     "name": "br-nncp-scale-{{.Replica}}",
     "labels": {
-      "test-type": "nic-hotplug-simple"
+      "test-type": "nic-hotplug-simple",
+      "cnv-scenarios.io/run": "{{ .runId }}"
     }
   },
   "spec": {

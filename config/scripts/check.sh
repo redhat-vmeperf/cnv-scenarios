@@ -1136,26 +1136,45 @@ check_nic_hotplug() {
     local private_key="${5:-}"
     local vm_user="${6:-}"
     local validate_guest_os="${7:-true}"
-    local results_dir="${8:-/tmp/kube-burner-validations}"
-    
+    local arg8="${8:-}"
+    local arg9="${9:-}"
+    local results_dir
+    local nncp_run_id=""
+    if [[ -n "${arg9}" ]]; then
+        nncp_run_id="${arg8}"
+        results_dir="${arg9}"
+    else
+        results_dir="${arg8:-/tmp/kube-burner-validations}"
+    fi
+
+    local nncp_simple_lbl="test-type=nic-hotplug-simple"
+    local nncp_vlan_lbl="test-type=nic-hotplug-vlan"
+    if [[ -n "${nncp_run_id}" ]]; then
+        nncp_simple_lbl="test-type=nic-hotplug-simple,cnv-scenarios.io/run=${nncp_run_id}"
+        nncp_vlan_lbl="test-type=nic-hotplug-vlan,cnv-scenarios.io/run=${nncp_run_id}"
+    fi
+
     echo "=========================================="
     echo "NIC Hot-plug Validation"
     echo "=========================================="
     echo "Namespace: ${namespace}"
     echo "Expected NICs: ${expected_nic_count}"
     echo "Validate Guest OS: ${validate_guest_os}"
+    if [[ -n "${nncp_run_id}" ]]; then
+        echo "NNCP run scope: cnv-scenarios.io/run=${nncp_run_id}"
+    fi
     echo ""
     
     # 1. Validate NodeNetworkConfigurationPolicies (NNCPs)
     echo "[1/5] Validating NodeNetworkConfigurationPolicies..."
     
     local nncp_simple_count
-    nncp_simple_count=$(oc get nncp -l test-type=nic-hotplug-simple --no-headers 2>/dev/null | wc -l 2>/dev/null || echo "0")
+    nncp_simple_count=$(oc get nncp -l "${nncp_simple_lbl}" --no-headers 2>/dev/null | wc -l 2>/dev/null || echo "0")
     nncp_simple_count=$(echo "${nncp_simple_count}" | head -1 | tr -cd '0-9')
     nncp_simple_count=${nncp_simple_count:-0}
     
     local nncp_vlan_count
-    nncp_vlan_count=$(oc get nncp -l test-type=nic-hotplug-vlan --no-headers 2>/dev/null | wc -l 2>/dev/null || echo "0")
+    nncp_vlan_count=$(oc get nncp -l "${nncp_vlan_lbl}" --no-headers 2>/dev/null | wc -l 2>/dev/null || echo "0")
     nncp_vlan_count=$(echo "${nncp_vlan_count}" | head -1 | tr -cd '0-9')
     nncp_vlan_count=${nncp_vlan_count:-0}
     
@@ -1172,10 +1191,10 @@ check_nic_hotplug() {
     # Check NNCP status (Available condition)
     # Query both simple and vlan NNCPs separately since regex selector is not supported
     local nncp_ready_count
-    nncp_ready_count=$(oc get nncp -l test-type=nic-hotplug-simple -o json 2>/dev/null | \
+    nncp_ready_count=$(oc get nncp -l "${nncp_simple_lbl}" -o json 2>/dev/null | \
         jq '[.items[] | select(.status.conditions[]? | select(.type=="Available" and .status=="True"))] | length' 2>/dev/null || echo "0")
     local nncp_vlan_ready_count
-    nncp_vlan_ready_count=$(oc get nncp -l test-type=nic-hotplug-vlan -o json 2>/dev/null | \
+    nncp_vlan_ready_count=$(oc get nncp -l "${nncp_vlan_lbl}" -o json 2>/dev/null | \
         jq '[.items[] | select(.status.conditions[]? | select(.type=="Available" and .status=="True"))] | length' 2>/dev/null || echo "0")
     # Sanitize and sum
     nncp_ready_count=$(echo "${nncp_ready_count}" | head -1 | tr -cd '0-9')
@@ -1190,8 +1209,8 @@ check_nic_hotplug() {
     if [ "${nncp_ready_count}" -ne "${total_nncp_count}" ]; then
         echo "  ERROR: Not all NNCPs are in Ready state"
         echo "  Degraded NNCPs:"
-        oc get nncp -l test-type=nic-hotplug-simple
-        oc get nncp -l test-type=nic-hotplug-vlan
+        oc get nncp -l "${nncp_simple_lbl}"
+        oc get nncp -l "${nncp_vlan_lbl}"
         log_validation_checkpoint "nncp_status" "FAIL" "Only ${nncp_ready_count}/${total_nncp_count} NNCPs Ready"
         return 1
     fi

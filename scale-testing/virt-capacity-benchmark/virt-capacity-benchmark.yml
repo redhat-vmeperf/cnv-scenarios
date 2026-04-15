@@ -2,7 +2,7 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := "virt-capacity-benchmark" }}
+{{- $testName := "cnv-virt-capacity-benchmark" }}
 {{- $nsName := .testNamespace -}}
 {{- $vmCount := .vmCount -}}
 {{- $vmName := $testName -}}

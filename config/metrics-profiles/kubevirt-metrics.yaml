@@ -301,3 +301,22 @@
 
 - query: sum(process_resident_memory_bytes{container!=""}) by (job, container, instance) > 0
   metricName: processMemory
+
+# Ceph/ODF Storage metrics
+- query: rate(ceph_osd_apply_latency_ms[5m])
+  metricName: cephOSDApplyLatency
+
+- query: rate(ceph_osd_commit_latency_ms[5m])
+  metricName: cephOSDCommitLatency
+
+- query: sum(rate(ceph_osd_op_prepare_latency_sum[5m])) by (osd) > 0
+  metricName: cephOSDOpPrepareLatency
+
+- query: sum(rate(ceph_osd_op_process_latency_sum[5m])) by (osd) > 0
+  metricName: cephOSDOpProcessLatency
+
+- query: ceph_cluster_total_bytes - ceph_cluster_total_used_bytes
+  metricName: cephClusterAvailableBytes
+
+- query: sum(ceph_osd_numpg) by (osd)
+  metricName: cephOSDPlacementGroups

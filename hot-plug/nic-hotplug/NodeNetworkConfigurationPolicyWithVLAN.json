@@ -4,7 +4,8 @@
  "metadata": {
    "name": "br-nncp-scale-{{add .Replica 100}}",
    "labels": {
-     "test-type": "nic-hotplug-vlan"
+     "test-type": "nic-hotplug-vlan",
+     "cnv-scenarios.io/run": "{{ .runId }}"
    }
  },
  "spec": {

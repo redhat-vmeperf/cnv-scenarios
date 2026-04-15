@@ -1,0 +1,2667 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Dedicated dashboard for per-host-density and scale testing - tracking VM startup times, lifecycle phases, KubeVirt control plane, and cluster infrastructure during VM creation at scale.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 34,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Run Detail v2",
+      "tooltip": "Deep-dive into a single run",
+      "type": "link",
+      "url": "/d/cnv-run-detail-v2/cnv-run-detail-v2"
+    },
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Fleet Overview v2",
+      "tooltip": "CNV fleet overview",
+      "type": "link",
+      "url": "/d/cnv-fleet-overview-v2/cnv-fleet-overview-v2"
+    },
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Run Comparison v2",
+      "tooltip": "Compare two runs side-by-side",
+      "type": "link",
+      "url": "/d/cnv-run-comparison-v2/cnv-run-comparison-v2"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Run Summary",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Total VMs Launched",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Avg Startup Time",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "yellow",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "alias": "",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND jobName.keyword: startup-vms AND quantileName.keyword: VMIRunning",
+          "metrics": [
+            {
+              "field": "$latencyPercentile",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "quantileName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "1",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "P99 Startup Time",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "max"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Slowest VM",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 5
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "durationSeconds",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: metadata AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Test Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 5
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "alertsSummary.totalFiring",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "ec50d280-6332-456e-b8f3-3d070fe8c38e"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "1"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "metricName.keyword: alerts AND uuid.keyword: $uuid",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Alerts Fired",
+      "type": "stat"
+    },
+    {
+      "id": 32,
+      "type": "volkovlabs-echarts-panel",
+      "title": "Startup Throughput",
+      "description": "VMs successfully started per minute during the startup phase",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "count"
+            },
+            {
+              "field": "vmiRunningLatency",
+              "id": "2",
+              "type": "max"
+            },
+            {
+              "field": "vmiRunningLatency",
+              "id": "3",
+              "type": "min"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "options": {
+        "renderer": "canvas",
+        "editor": {
+          "height": 600,
+          "format": "auto"
+        },
+        "baidu": {
+          "callback": "bmapReady",
+          "key": ""
+        },
+        "editorMode": "code",
+        "gaode": {
+          "key": "",
+          "plugin": "AMap.Scale,AMap.ToolBar"
+        },
+        "google": {
+          "callback": "gmapReady",
+          "key": ""
+        },
+        "map": "none",
+        "themeEditor": {
+          "config": "{}",
+          "height": 400,
+          "name": "default"
+        },
+        "visualEditor": {
+          "code": "return {};",
+          "dataset": [],
+          "series": []
+        },
+        "getOption": "const s = context.panel.data.series[0];\nconst isDark = context.grafana.theme.isDark;\nconst textColor = isDark ? '#ccc' : '#333';\nlet count = 0, maxMs = 0, minMs = 0;\nif (s && s.fields) {\n  for (const f of s.fields) {\n    const n = (f.name || '').toLowerCase();\n    if (n.includes('count')) count = f.values[0] || 0;\n    else if (n === 'max' || n.includes('max')) maxMs = f.values[0] || 0;\n    else if (n === 'min' || n.includes('min')) minMs = f.values[0] || 0;\n  }\n}\nconst spreadMin = (maxMs - minMs) / 60000;\nconst throughput = spreadMin > 0 ? (count / spreadMin).toFixed(1) : '0';\nreturn {\n  graphic: { elements: [\n    { type: 'text', left: 'center', top: '30%', style: {\n      text: throughput, fontSize: 36, fontWeight: 'bold',\n      fill: Number(throughput) > 10 ? '#73BF69' : Number(throughput) > 5 ? '#FADE2A' : '#F2495C'\n    }},\n    { type: 'text', left: 'center', top: '65%', style: {\n      text: 'VMs / min', fontSize: 14, fill: textColor\n    }}\n  ]}\n};"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      }
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Fastest VM",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "min"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300000
+              },
+              {
+                "color": "red",
+                "value": 600000
+              }
+            ]
+          },
+          "unit": "ms",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      }
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Startup Spread",
+      "description": "Time spread between fastest and slowest VM startup (max - min vmiRunningLatency)",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "metrics": [
+            {
+              "field": "vmiRunningLatency",
+              "id": "1",
+              "type": "max"
+            },
+            {
+              "field": "vmiRunningLatency",
+              "id": "2",
+              "type": "min"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "jobName.keyword",
+              "id": "3",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "_term",
+                "size": "5"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Startup Spread",
+            "binary": {
+              "left": "Max",
+              "operator": "-",
+              "right": "Min"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Max": true,
+              "Min": true,
+              "jobName.keyword": true
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300000
+              },
+              {
+                "color": "red",
+                "value": 600000
+              }
+            ]
+          },
+          "unit": "ms",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 5
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 101,
+      "title": "VM Lifecycle Over Time",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Running"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pending"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Scheduling"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "{{term labels.phase.keyword}}",
+          "bucketAggs": [
+            {
+              "field": "labels.phase.keyword",
+              "id": "3",
+              "settings": {
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "value",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiStatusCount",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "VM Count by Phase",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "alias": "{{term labels.node.keyword}}",
+          "bucketAggs": [
+            {
+              "field": "labels.node.keyword",
+              "id": "3",
+              "settings": {
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "20"
+              },
+              "type": "terms"
+            },
+            {
+              "field": "timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "field": "value",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiNodeCount",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "VM Distribution by Node",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 102,
+      "title": "Startup Lifecycle Waterfall",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 9,
+      "options": {
+        "renderer": "canvas",
+        "editor": {
+          "height": 600,
+          "format": "auto"
+        },
+        "baidu": {
+          "callback": "bmapReady",
+          "key": ""
+        },
+        "editorMode": "code",
+        "gaode": {
+          "key": "",
+          "plugin": "AMap.Scale,AMap.ToolBar"
+        },
+        "google": {
+          "callback": "gmapReady",
+          "key": ""
+        },
+        "map": "none",
+        "themeEditor": {
+          "config": "{}",
+          "height": 400,
+          "name": "default"
+        },
+        "visualEditor": {
+          "code": "return {};",
+          "dataset": [],
+          "series": []
+        },
+        "getOption": "const s = context.panel.data.series[0];\nconst isDark = context.grafana.theme.isDark;\nconst textColor = isDark ? '#ccc' : '#333';\nconst percentile = context.grafana.replaceVariables('$latencyPercentile') || 'P99';\n\nif (!s || !s.fields || s.fields.length < 2) {\n  return { title: { text: 'No VMI latency data', left: 'center', top: 'center', textStyle: { color: textColor } } };\n}\n\nlet nameField = null, valueField = null;\nfor (const f of s.fields) {\n  if (f.type === 'string' || (f.name || '').toLowerCase().includes('quantile')) nameField = f;\n  else if (f.type === 'number' || (f.name || '').toLowerCase().includes('average')) valueField = f;\n}\nif (!nameField || !valueField) {\n  return { title: { text: 'No data fields', left: 'center', top: 'center', textStyle: { color: textColor } } };\n}\n\nconst phaseOrder = ['VMICreated','VMIPending','VMIScheduling','VMIScheduled','PodPodScheduled','PodCreated','PodInitialized','PodContainersReady','VMIRunning','VMReady'];\nconst raw = {};\nfor (let i = 0; i < nameField.values.length; i++) {\n  raw[nameField.values[i]] = (valueField.values[i] || 0) / 1000;\n}\nconst phases = phaseOrder.filter(p => raw[p] !== undefined);\nconst cumulative = phases.map(p => raw[p]);\n\nconst deltas = [];\nfor (let i = 0; i < cumulative.length; i++) {\n  if (i === 0) deltas.push(cumulative[0]);\n  else deltas.push(Math.max(0, cumulative[i] - cumulative[i - 1]));\n}\n\nconst base = cumulative.map((c, i) => i === 0 ? 0 : cumulative[i - 1]);\n\nconst colors = ['#5470c6','#91cc75','#fac858','#ee6666','#73c0de','#3ba272','#fc8452','#9a60b4','#ea7ccc','#5794F2'];\n\nreturn {\n  tooltip: {\n    trigger: 'axis',\n    formatter: function(params) {\n      const phase = params[0].name;\n      const p0 = params.find(p => p.seriesName === 'base');\n      const p1 = params.find(p => p.seriesName === 'Phase Duration');\n      const cum = p0 && p1 ? (p0.value + p1.value) : 0;\n      const delta = p1 ? p1.value : 0;\n      return '<b>' + phase + '</b><br/>Cumulative: ' + cum.toFixed(1) + ' s<br/>Phase duration: ' + delta.toFixed(1) + ' s';\n    }\n  },\n  grid: { left: 60, right: 30, top: 30, bottom: 80 },\n  xAxis: { type: 'category', data: phases, axisLabel: { color: textColor, rotate: 35, fontSize: 11 } },\n  yAxis: { type: 'value', name: percentile + ' Latency (s)', nameTextStyle: { color: textColor }, axisLabel: { color: textColor },\n    splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' } } },\n  series: [\n    {\n      name: 'base',\n      type: 'bar',\n      stack: 'waterfall',\n      data: base,\n      itemStyle: { color: 'transparent' },\n      emphasis: { itemStyle: { color: 'transparent' } }\n    },\n    {\n      name: 'Phase Duration',\n      type: 'bar',\n      stack: 'waterfall',\n      data: deltas.map((d, i) => ({ value: d, itemStyle: { color: colors[i % colors.length] } })),\n      label: { show: true, position: 'top', formatter: function(p) { return p.value.toFixed(1) + 's'; },\n        color: textColor, fontSize: 11 }\n    }\n  ]\n};"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyQuantilesMeasurement AND NOT jobName.keyword: shutdown-vms",
+          "metrics": [
+            {
+              "field": "$latencyPercentile",
+              "id": "1",
+              "type": "avg"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "field": "quantileName.keyword",
+              "id": "2",
+              "type": "terms",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "asc",
+                "orderBy": "1",
+                "size": "20"
+              }
+            }
+          ],
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Startup Lifecycle ($latencyPercentile)",
+      "type": "volkovlabs-echarts-panel",
+      "transformations": []
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 103,
+      "title": "Per-VM Startup Times",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "lineInterpolation": "linear",
+            "lineWidth": 0,
+            "pointSize": 3
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "5000"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms AND nodeName.keyword: $worker",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Per-VM Startup Times",
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "time",
+                "targetField": "timestamp"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "timestamp": 0,
+              "vmiRunningLatency": 1
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 104,
+      "title": "Startup Time Distribution",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "id": 11,
+      "options": {
+        "bucketOffset": 0,
+        "bucketSize": "auto"
+      },
+      "targets": [
+        {
+          "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "5000"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+          "refId": "A",
+          "timeField": "timestamp"
+        }
+      ],
+      "title": "Startup Time Distribution",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_index": true,
+              "_type": true,
+              "highlight": true,
+              "sort": true
+            },
+            "indexByName": {
+              "vmiRunningLatency": 0
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "histogram"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "id": 105,
+      "panels": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Avg Startup (ms)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "ms"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Max Startup (ms)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "ms"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Min Startup (ms)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "ms"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 44
+          },
+          "id": 12,
+          "options": {
+            "footer": {
+              "show": false
+            },
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "nodeName.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "2",
+                    "size": "100"
+                  },
+                  "type": "terms"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "id": "1",
+                  "type": "count"
+                },
+                {
+                  "field": "vmiRunningLatency",
+                  "id": "2",
+                  "type": "avg"
+                },
+                {
+                  "field": "vmiRunningLatency",
+                  "id": "3",
+                  "type": "max"
+                },
+                {
+                  "field": "vmiRunningLatency",
+                  "id": "4",
+                  "type": "min"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Per-Node Breakdown",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "2": "Avg Startup (ms)",
+                  "3": "Max Startup (ms)",
+                  "4": "Min Startup (ms)",
+                  "Count": "VM Count",
+                  "term nodeName.keyword": "Node"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Per-Node Breakdown",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "id": 106,
+      "panels": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "points",
+                "lineWidth": 0,
+                "pointSize": 3
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 53
+          },
+          "id": 13,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "replica",
+                  "id": "3",
+                  "settings": {
+                    "order": "asc",
+                    "orderBy": "1",
+                    "size": "5000"
+                  },
+                  "type": "terms"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "vmiRunningLatency",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement AND jobName.keyword: startup-vms",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Startup Time vs VM Index",
+          "type": "barchart"
+        }
+      ],
+      "title": "Startup Time vs VM Index",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
+      "id": 107,
+      "panels": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 62
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "{{term labels.queue.keyword}}",
+              "bucketAggs": [
+                {
+                  "field": "labels.name.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "20"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: kubevirtWorkQueueDepth",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "KubeVirt Work Queue Depth",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 62
+          },
+          "id": 15,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "{{term labels.queue.keyword}}",
+              "bucketAggs": [
+                {
+                  "field": "labels.name.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "20"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: kubevirtWorkQueueAddRate",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "KubeVirt Work Queue Add Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 70
+          },
+          "id": 16,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "{{term labels.component.keyword}}",
+              "bucketAggs": [
+                {
+                  "field": "labels.container.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "10"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: kubevirtCPU",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "KubeVirt CPU",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 70
+          },
+          "id": 17,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "{{term labels.component.keyword}}",
+              "bucketAggs": [
+                {
+                  "field": "labels.container.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "10"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: kubevirtMemory",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "KubeVirt Memory",
+          "type": "timeseries"
+        }
+      ],
+      "title": "KubeVirt Control Plane",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 78
+      },
+      "id": 108,
+      "panels": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 79
+          },
+          "id": 18,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: APIRequestRate",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "API Request Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 79
+          },
+          "id": 19,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "etcd WAL Fsync P99",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: 99thEtcdDiskWalFsyncDurationSeconds",
+              "refId": "A",
+              "timeField": "timestamp"
+            },
+            {
+              "alias": "etcd Backend Commit P99",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: 99thEtcdDiskBackendCommitDurationSeconds",
+              "refId": "B",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "etcd WAL Fsync & Backend Commit",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 87
+          },
+          "id": 20,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "{{term labels.node.keyword}}",
+              "bucketAggs": [
+                {
+                  "field": "labels.instance.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "20"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: nodeCPU AND labels.instance.keyword: $worker",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Node CPU",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 87
+          },
+          "id": 21,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "{{term labels.node.keyword}}",
+              "bucketAggs": [
+                {
+                  "field": "labels.instance.keyword",
+                  "id": "3",
+                  "settings": {
+                    "order": "desc",
+                    "orderBy": "_count",
+                    "size": "20"
+                  },
+                  "type": "terms"
+                },
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: nodeMemoryAvailable AND labels.instance.keyword: $worker",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Node Memory",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Cluster Infrastructure",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 95
+      },
+      "id": 109,
+      "panels": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 96
+          },
+          "id": 22,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: cephOSDApplyLatency",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Ceph OSD Apply Latency",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 96
+          },
+          "id": 23,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: cephOSDCommitLatency",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Ceph OSD Commit Latency",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 104
+          },
+          "id": 24,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: cephOSDOpPrepareLatency",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Ceph OSD Op Prepare Latency",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineWidth": 1
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 104
+          },
+          "id": 25,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [
+                {
+                  "field": "timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto",
+                    "min_doc_count": "0"
+                  },
+                  "type": "date_histogram"
+                }
+              ],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+              },
+              "metrics": [
+                {
+                  "field": "value",
+                  "id": "1",
+                  "type": "avg"
+                }
+              ],
+              "query": "uuid.keyword: $uuid AND metricName.keyword: cephClusterAvailableBytes",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Ceph Cluster Available Space",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Storage / Ceph",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 112
+      },
+      "id": 110,
+      "panels": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 113
+          },
+          "id": 26,
+          "options": {
+            "footer": {
+              "show": false
+            },
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "alias": "",
+              "bucketAggs": [],
+              "datasource": {
+                "type": "elasticsearch",
+                "uid": "ec50d280-6332-456e-b8f3-3d070fe8c38e"
+              },
+              "metrics": [
+                {
+                  "id": "1",
+                  "settings": {
+                    "size": "1"
+                  },
+                  "type": "raw_data"
+                }
+              ],
+              "query": "metricName.keyword: alerts AND uuid.keyword: $uuid",
+              "refId": "A",
+              "timeField": "timestamp"
+            }
+          ],
+          "title": "Alerts Table",
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "format": "json",
+                "replace": false,
+                "source": "alerts"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "_id": true,
+                  "_index": true,
+                  "_type": true,
+                  "highlight": true,
+                  "metricName": true,
+                  "sort": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "title": "Prometheus Alerts During Test",
+      "type": "row"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "cnv",
+    "startup",
+    "performance",
+    "scale",
+    "v2"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "per-host-density",
+          "value": "per-host-density"
+        },
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "includeAll": false,
+        "label": "Workload",
+        "multi": false,
+        "name": "workload",
+        "query": "{\"find\": \"terms\", \"field\": \"testName.keyword\", \"query\": \"metricName.keyword: metadata\"}",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "label": "CNV Version",
+        "multi": false,
+        "name": "cnvVersion",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"operators.cnvVersion.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload\"}",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "f8127b7f-c6c0-4a3b-a2b2-8b55c747c690"
+        },
+        "includeAll": false,
+        "label": "Run UUID",
+        "multi": false,
+        "name": "uuid",
+        "query": "{\"find\": \"terms\", \"field\": \"uuid.keyword\", \"query\": \"metricName.keyword: metadata AND testName.keyword: $workload AND operators.cnvVersion.keyword: $cnvVersion\"}",
+        "refresh": 2,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": "*",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "bd58d7f2-5053-4131-a364-d10169105758"
+        },
+        "includeAll": true,
+        "label": "Worker Node",
+        "multi": true,
+        "name": "worker",
+        "query": "{\"find\": \"terms\", \"field\": \"nodeName.keyword\", \"query\": \"uuid.keyword: $uuid AND metricName.keyword: vmiLatencyMeasurement\"}",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "P99",
+          "value": "P99"
+        },
+        "label": "Latency Percentile",
+        "multi": false,
+        "name": "latencyPercentile",
+        "query": "P99,P95,P50",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "CNV VM Startup Performance",
+  "uid": "cnv-vm-startup-performance",
+  "version": 2,
+  "weekStart": ""
+}

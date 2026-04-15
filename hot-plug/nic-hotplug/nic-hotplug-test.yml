@@ -1,8 +1,8 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := "nic-hotplug-test" }}
-{{- $nsName := .testNamespace | default "nic-hotplug-test" -}}
+{{- $testName := .testName | default "cnv-nic-hotplug" -}}
+{{- $nsName := .testNamespace | default "cnv-nic-hotplug" -}}
 {{- $nicCount := .nicCount | default 25 -}}
 {{- $sshPublicKeySecretName := "multi-nic-vm" -}}
 {{- $jobCounterLabelKey := (list $testName "." $kubeBurnerFQDN "/counter") | join "" -}}
@@ -61,6 +61,7 @@ jobs:
     replicas: {{ $nicCount }}
     inputVars:
       state: "up"
+      runId: "{{ .runTimestamp }}"
 
 # Create VLAN Bridge NodeNetworkConfigurationPolicies  
 - name: create-vlan-bridge-nncp
@@ -79,6 +80,7 @@ jobs:
     inputVars:
       state: "up"
       base_interface: {{ .baseInterface | default "ens1f1" }}
+      runId: "{{ .runTimestamp }}"
 
 # Create Simple Bridge NetworkAttachmentDefinitions
 - name: create-network-attachments-simple
@@ -143,7 +145,7 @@ jobs:
   cleanup: false
   # Set missing key as empty to allow using default values
   defaultMissingKeysWithZero: true
-  beforeCleanup: "../../config/scripts/wrapper.sh check_nic_hotplug {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ $nicCount }} {{ .privateKey }} {{ .vmUser }} true {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
+  beforeCleanup: "../../config/scripts/wrapper.sh check_nic_hotplug {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ $nicCount }} {{ .privateKey }} {{ .vmUser }} true {{ .runTimestamp }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
   objects:
   - objectTemplate: templates/secret_ssh_public.yml
     runOnce: true

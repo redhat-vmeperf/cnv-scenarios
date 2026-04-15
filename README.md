@@ -16,6 +16,7 @@ Before running tests, ensure you have the following installed and configured:
 | **oc** and **kubectl** | Kubernetes CLI | [OpenShift CLI](https://docs.openshift.com/container-platform/latest/cli_reference/openshift_cli/getting-started-cli.html) |
 | **OpenShift Virtualization** | CNV operator | Installed on cluster |
 | **Storage Class** | PVC provisioning | Configured (default: `ocs-storagecluster-ceph-rbd`) |
+| **python3** | Log indexing to Elasticsearch (optional) | `dnf install python3` or pre-installed on most systems |
 | **SSH Keys** | VM access validation | Paths in vars files must be valid and accessible |
 
 **SSH Key Setup:**
@@ -388,8 +389,8 @@ Comprehensive capacity testing with volume resize, VM restart, snapshot, and mig
 ```bash
 cd scale-testing/virt-capacity-benchmark
 
-# Remove leftover namespaces first
-oc delete ns -l 'kube-burner.io/test-name=virt-capacity-benchmark'
+# Remove leftover namespaces first (match testName in vars: cnv-virt-capacity-benchmark or cnv-sanity-virt-capacity-benchmark)
+oc delete ns -l 'kube-burner.io/test-name=cnv-virt-capacity-benchmark'
 
 # Run full test
 runTimestamp="run-$(date +%Y%m%d-%H%M%S)" kube-burner init --config=virt-capacity-benchmark.yml --user-data=vars.yml
@@ -760,7 +761,7 @@ make clean-sanity
 | Config File | `vars-sanity.yml` | `vars.yml` |
 | Resources | Minimal (1 VM, 1 CPU) | Full (configurable) |
 | Timeout | 5 minutes | 30+ minutes |
-| Monitoring | Disabled | Configurable |
+| Monitoring | Optional: set `esServer` (and vars) to enable ES indexing; Prometheus token injection when the cluster exposes the route | Same; full vars often enable more scrape targets |
 | Results Path | `/tmp/kube-burner-results/sanity-*` | `/tmp/kube-burner-results/full-*` |
 | Purpose | Quick validation | Full regression |
 
@@ -773,14 +774,57 @@ minimal-resources, large-disk, high-memory
 per-host-density, virt-capacity-benchmark
 ```
 
+## Observability and Dashboards
+
+When `esServer` is configured in the vars file, the test suite indexes structured data to Elasticsearch and visualizes it through Grafana dashboards.
+
+### Defaults and requirements
+
+Committed `vars.yml` / `vars-sanity.yml` files typically set `esServer: ""` so the repository stays portable. With an empty value, `run-workloads.sh` **skips** Elasticsearch indexing from `metadata-collector.sh`, `validation-indexer.sh`, `log-indexer.py`, and the ES path in `alert-collector.sh` (Prometheus alert JSON may still be written under the results directory when Prometheus credentials are present).
+
+To enable the full observability pipeline, set Elasticsearch explicitly, for example:
+
+```bash
+esServer="https://your-elasticsearch:9200" ./run-workloads.sh cpu-limits --mode sanity
+```
+
+Prometheus scraping for kube-burner metrics is configured separately in scenario YAML; `run-workloads.sh` can inject `PROM` and `PROM_TOKEN` into the temp vars when the OpenShift monitoring route and `oc create token` succeed.
+
+External automation or Grafana queries that filter on legacy `testName` / namespace strings may need updates after renames to the `cnv-*` convention (see each scenario’s `vars*.yml`).
+
+### Data Pipeline
+
+After each test, `run-workloads.sh` runs four post-processing scripts:
+
+| Script | ES Index | What It Captures |
+|--------|----------|------------------|
+| `metadata-collector.sh` | `cnv-metadata` | Cluster info (OCP/CNV/ODF versions, node specs), test config, runtime vars |
+| `validation-indexer.sh` | `cnv-validation` | Structured pass/fail reports from each validation phase |
+| `alert-collector.sh` | `cnv-alerts` | Prometheus alerts active during the test window |
+| `log-indexer.py` | `cnv-logs` | Parsed kube-burner and validation log lines with timestamps and levels |
+
+kube-burner itself indexes metrics (VMI latency, PVC latency, node/Ceph metrics) to per-test `cnv-<testName>` indices via its Prometheus scrape + ES indexer.
+
+### Grafana Dashboards
+
+| Dashboard | Purpose |
+|-----------|---------|
+| **Fleet Overview** | KPIs across all runs — success rate, duration trends, version matrix |
+| **Run Explorer** | Searchable table of all runs with workload/version/storage filters |
+| **Run Detail** | Deep dive: VMI latency waterfall, node metrics, runtime config, alerts |
+| **Run Comparison** | Side-by-side: environment diff, config diff, metric overlay |
+| **VM Startup Performance** | VM lifecycle analysis with KubeVirt control plane and Ceph metrics |
+
+Dashboard JSON files are in `config/grafana/`. See [ARCHITECTURE.md](ARCHITECTURE.md#observability-pipeline) for deployment instructions and datasource configuration.
+
 ## Cleanup
 
 ```bash
 # Delete test namespace
 oc delete namespace <test-namespace>
 
-# Delete by test label
-oc delete ns -l 'kube-burner.io/test-name=<test-name>'
+# Delete by test label (use the testName value from the scenario vars, e.g. cnv-cpu-limits)
+oc delete ns -l 'kube-burner.io/test-name=<test-name-from-vars>'
 
 # Using counter=0 (triggers cleanup job)
 counter=0 ./run-workloads.sh cpu-limits
@@ -788,8 +832,10 @@ counter=0 ./run-workloads.sh cpu-limits
 # Per-host-density: disable cleanup to preserve namespaces
 cleanup=false ./run-workloads.sh per-host-density --mode sanity
 
-# Per-host-density: manually cleanup after inspection
-oc delete ns -l 'kube-burner.io/test-name=per-host-density'
+# Per-host-density: manually cleanup after inspection (full mode testName is cnv-per-host-density; sanity uses cnv-sanity-per-host-density)
+oc delete ns -l 'kube-burner.io/test-name=cnv-per-host-density'
+# or for a sanity run:
+# oc delete ns -l 'kube-burner.io/test-name=cnv-sanity-per-host-density'
 ```
 
 ## Troubleshooting

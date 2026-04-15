@@ -2,8 +2,8 @@
 # Minimal resources for quick validation testing
 
 # Test Configuration
-testNamespace: "sanity-cpu-limits-TIMESTAMP"  # TIMESTAMP replaced at runtime
-testName: 'sanity-cpu-limits'
+testNamespace: "cnv-sanity-cpu-limits-TIMESTAMP"  # TIMESTAMP replaced at runtime
+testName: 'cnv-sanity-cpu-limits'
 resultsPath: "/tmp/kube-burner-results/sanity-cpu-limits"
 runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 
@@ -26,8 +26,8 @@ imageUrl: "https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_6
 baseImage: "quay.io/containerdisks/fedora:41"
 
 # SSH Configuration
-privateKey: '/home/kni/.ssh/id_rsa'
-publicKey: '/home/kni/.ssh/id_rsa.pub'
+privateKey: '/home/mlehrer/.ssh/id_rsa'
+publicKey: '/home/mlehrer/.ssh/id_rsa.pub'
 vmUser: 'fedora'  # Fedora cloud images use 'fedora' user
 
 # Test Execution Control
@@ -38,8 +38,9 @@ vmRunning: true
 maxWaitTimeout: "5m"
 jobPause: "1m"
 
-# Monitoring Configuration (disabled for sanity)
+# Monitoring Configuration (ES enabled, Prometheus disabled for sanity)
 esServer: ""
+metadataIndex: "cnv-metadata"
 PROM: ""
 PROM_TOKEN: ""
 

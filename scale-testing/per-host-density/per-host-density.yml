@@ -1,7 +1,8 @@
 {{- $PROM := .PROM -}}
 {{- $PROM_TOKEN := .PROM_TOKEN -}}
 {{- $kubeBurnerFQDN := "kube-burner.io" -}}
-{{- $testName := "per-host-density" }}
+{{- /* Must match vars testName / testNamespacePrefix (sanity vs full); drives job counter labels */ -}}
+{{- $testName := .testName | default "cnv-per-host-density" -}}
 {{- $vmName := $testName -}}
 {{- $sshPublicKeySecretName := $testName -}}
 {{- $sourceStorageSizeStr := (list (.sourceStorageSize | toString) "Mi") | join "" -}}
@@ -17,9 +18,13 @@
 {{- $scaleMode := .scaleMode | default "single-node" -}}
 {{- $namespaceCount := .namespaceCount | default 1 -}}
 {{- $vmsPerNamespace := .vmsPerNamespace | default 10 -}}
-{{- $namespacePrefix := .testNamespacePrefix | default "per-host-density-test" -}}
+{{- $namespacePrefix := .testNamespacePrefix | default "cnv-per-host-density" -}}
 {{- $nsName := $namespacePrefix -}}
 ---
+global:
+  measurements:
+  - name: vmiLatency
+  - name: pvcLatency
 metricsEndpoints:
 - indexer:
     type: local
@@ -49,27 +54,10 @@ jobs:
       {{ $testNamespacesLabelKey }}: {{ $testName }}
 {{ end }}
 
-# Create SSH secret for VM access validation (one per namespace)
-- name: create-ssh-secret
-  jobType: create
-  jobIterations: {{ $namespaceCount }}
-  qps: 5
-  burst: 10
-  namespacedIterations: true
-  namespace: {{ $namespacePrefix }}
-  namespaceLabels:
-    {{ $testNamespacesLabelKey }}: {{ $testNamespacesLabelValue }}
-  maxWaitTimeout: 5m
-  jobPause: 10s
-  cleanup: false
-  objects:
-  - objectTemplate: templates/ssh-secret.yml
-    replicas: 1
-    inputVars:
-      name: {{ .testName }}-ssh
-      publicKey: {{ .publicKey }}
-
-# Create source DataVolume first (one per namespace)
+# Create source DataVolume first (one per namespace).
+# customStatusPaths: kube-burner evaluates `key` as jq against the object's .status
+# (not the full resource). For CDI DataVolume, wait until .phase is Succeeded.
+# See lessons_learned.md (kube-burner customStatusPaths / Session 4).
 - name: create-source-dv
   jobType: create
   jobIterations: {{ $namespaceCount }}
@@ -87,7 +75,7 @@ jobs:
     replicas: 1
     waitOptions:
       customStatusPaths:
-      - key: '.status.phase'
+      - key: '.phase'
         value: 'Succeeded'
     inputVars:
       name: per-host-source
@@ -99,9 +87,6 @@ jobs:
 # Create VMs - supports single-node or multi-node distribution
 - name: create-vms
   jobType: create
-  measurements:
-  - name: vmiLatency
-  - name: pvcLatency
   jobIterations: {{ $namespaceCount }}
   qps: {{ .qpsCreate }}
   burst: {{ .burstCreate }}
@@ -123,6 +108,14 @@ jobs:
   defaultMissingKeysWithZero: true
   beforeCleanup: "config/scripts/check.sh check_vm_running {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} all {{ .privateKey }} {{ .vmUser }} {{ .percentage_of_vms_to_validate | default 25 }} {{ .max_ssh_retries | default 8 }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
   objects:
+  # SSH secret in the same job as VMs (see cpu-limits-test.yml). A separate
+  # create-only job can leave the secret missing before VM start under kube-burner v2.
+  - objectTemplate: templates/ssh-secret.yml
+    runOnce: true
+    replicas: 1
+    inputVars:
+      name: {{ $testName }}-ssh
+      publicKey: {{ .publicKey }}
   - objectTemplate: vm-per-host-template.yml
     replicas: {{ $vmsPerNamespace }}
     waitOptions:
@@ -131,7 +124,7 @@ jobs:
     inputVars:
       name: {{ $vmName }}
       counter: {{ .counter | toString }}
-      sshPublicKeySecret: {{ .testName }}-ssh
+      sshPublicKeySecret: {{ $testName }}-ssh
       OS: alpine
       cpuRequest: {{ .vmCpuRequest }}
       cpuLimit: {{ .vmCpuLimit }}
@@ -177,7 +170,8 @@ jobs:
   - objectTemplate: templates/sleep-job.yml
     replicas: 1
     inputVars:
-      name: sleep-job
+      # Unique per run (parallel --all) so Job name does not collide in the iteration namespace.
+      name: sleep-{{ .runTimestamp }}
       counter: {{ .counter | toString }}
       sleepDuration: "120" # 2 minutes in seconds
 {{ end }}

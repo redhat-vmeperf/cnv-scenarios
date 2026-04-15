@@ -1,0 +1,218 @@
+# CNV Grafana Alert Rules - Provisioning Configuration
+#
+# Place this file in Grafana's provisioning/alerting/ directory to auto-create alert rules.
+# Alternatively, import via Grafana HTTP API: POST /api/v1/provisioning/alert-rules
+#
+# Prerequisites:
+#   - Datasource "cnv-es" configured with index pattern "cnv-metadata"
+#   - Grafana unified alerting enabled (default in Grafana 10.x)
+#   - Contact point configured for notifications (Slack, email, etc.)
+#
+# These rules query the cnv-metadata Elasticsearch index for test results,
+# durations, and staleness. Adjust thresholds and evaluation intervals as needed.
+
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: CNV Test Health
+    folder: CNV
+    interval: 10m
+    rules:
+      # -----------------------------------------------------------------------
+      # 1. Regression Alert - Workload started failing
+      # Fires when a test that was previously passing now has failures.
+      # Query: count of FAILURE results in the last 24h for any workload
+      # -----------------------------------------------------------------------
+      - uid: cnv-regression-alert
+        title: "CNV Workload Regression Detected"
+        condition: B
+        for: 0s
+        annotations:
+          summary: "A CNV workload has started failing"
+          description: "One or more workloads have FAILURE results in the last 24 hours. Check the CNV Fleet Overview dashboard for details."
+          runbook_url: ""
+        labels:
+          severity: critical
+          team: cnv-perf
+        data:
+          - refId: A
+            datasourceUid: cnv-es
+            relativeTimeRange:
+              from: 86400  # 24 hours
+              to: 0
+            model:
+              query: "metricName.keyword: metadata AND testResult.keyword: FAILURE"
+              timeField: timestamp
+              metrics:
+                - type: count
+                  id: "1"
+              bucketAggs:
+                - type: terms
+                  field: testName.keyword
+                  id: "3"
+                  settings:
+                    size: "20"
+                    min_doc_count: "1"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: sum
+
+      # -----------------------------------------------------------------------
+      # 2. Latency Degradation - VMI boot time increased significantly
+      # Fires when average run duration exceeds a configurable threshold.
+      # Adjust the threshold (3600 = 1 hour) based on expected run durations.
+      # -----------------------------------------------------------------------
+      - uid: cnv-latency-degradation
+        title: "CNV Run Duration Degradation"
+        condition: B
+        for: 0s
+        annotations:
+          summary: "CNV test run duration has increased significantly"
+          description: "Average run duration in the last 24 hours exceeds threshold. This may indicate VMI boot latency degradation or infrastructure issues."
+        labels:
+          severity: warning
+          team: cnv-perf
+        data:
+          - refId: A
+            datasourceUid: cnv-es
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            model:
+              query: "metricName.keyword: metadata"
+              timeField: timestamp
+              metrics:
+                - type: avg
+                  id: "1"
+                  field: durationSeconds
+              bucketAggs:
+                - type: terms
+                  field: testName.keyword
+                  id: "3"
+                  settings:
+                    size: "20"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 3600  # 1 hour threshold; adjust per workload
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: max
+
+      # -----------------------------------------------------------------------
+      # 3. Staleness Alert - No runs in 7 days
+      # Fires when no new metadata documents appear for any known workload.
+      # -----------------------------------------------------------------------
+      - uid: cnv-staleness-alert
+        title: "CNV Workload Stale - No Recent Runs"
+        condition: B
+        for: 0s
+        annotations:
+          summary: "No CNV test runs detected in the last 7 days"
+          description: "No new test metadata has been indexed for any workload in 7 days. Check if the test pipeline is running."
+        labels:
+          severity: info
+          team: cnv-perf
+        data:
+          - refId: A
+            datasourceUid: cnv-es
+            relativeTimeRange:
+              from: 604800  # 7 days
+              to: 0
+            model:
+              query: "metricName.keyword: metadata"
+              timeField: timestamp
+              metrics:
+                - type: count
+                  id: "1"
+              bucketAggs: []
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: sum
+
+      # -----------------------------------------------------------------------
+      # 4. etcd Health - Commit latency exceeded threshold
+      # Fires when etcd backend commit duration exceeds 20ms (0.02s).
+      # Uses per-test metrics index via cnv-metrics datasource.
+      # -----------------------------------------------------------------------
+      - uid: cnv-etcd-health
+        title: "CNV etcd Commit Latency Exceeded"
+        condition: B
+        for: 5m
+        annotations:
+          summary: "etcd backend commit latency exceeds 20ms threshold"
+          description: "The 99th percentile etcd disk backend commit duration has exceeded 0.02s. This is a known threshold for etcd health degradation."
+        labels:
+          severity: warning
+          team: cnv-perf
+        data:
+          - refId: A
+            datasourceUid: cnv-metrics
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            model:
+              query: "metricName.keyword: 99thEtcdDiskBackendCommitDurationSeconds"
+              timeField: timestamp
+              metrics:
+                - type: avg
+                  id: "1"
+                  field: value
+              bucketAggs:
+                - type: date_histogram
+                  field: timestamp
+                  id: "2"
+                  settings:
+                    interval: 1m
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0.02
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: max
