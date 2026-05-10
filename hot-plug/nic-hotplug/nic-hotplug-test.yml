@@ -145,7 +145,7 @@ jobs:
   cleanup: false
   # Set missing key as empty to allow using default values
   defaultMissingKeysWithZero: true
-  beforeCleanup: "../../config/scripts/wrapper.sh check_nic_hotplug {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ $nicCount }} {{ .privateKey }} {{ .vmUser }} true {{ .runTimestamp }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
+  beforeCleanup: "../../config/scripts/wrapper.sh check_nic_hotplug {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ $nicCount }} {{ .privateKey }} {{ .vmUser }} true {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
   objects:
   - objectTemplate: templates/secret_ssh_public.yml
     runOnce: true
