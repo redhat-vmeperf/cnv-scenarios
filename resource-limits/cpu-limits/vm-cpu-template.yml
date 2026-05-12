@@ -34,10 +34,9 @@ spec:
       domain:
         cpu:
           cores: {{.cpuCores}}
-          # Enable CPU pinning for high CPU count tests
-          {{- if gt (.cpuCores | int) 16 }}
-          dedicatedCpuPlacement: true
-          {{- end }}
+          sockets: {{ .cpuSockets | default 1 }}
+          threads: 1
+          maxSockets: {{ .cpuMaxSockets | default .cpuSockets | default 1 }}
         devices:
           disks:
           - disk:
@@ -55,9 +54,6 @@ spec:
         resources:
           requests:
             memory: {{.memory}}
-            {{- if gt (.cpuCores | int) 16 }}
-            cpu: {{.cpuCores}}
-            {{- end }}
       networks:
       - name: default
         pod: {}
@@ -74,10 +70,8 @@ spec:
             ssh_authorized_keys:
               - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... # Add your SSH key here
             runcmd:
-              # Install stress-ng for CPU testing
               - dnf install -y stress-ng htop
-              # Start CPU stress test matching the number of cores
-              - nohup stress-ng --cpu {{.cpuCores}} --timeout 0 &
+              - nohup stress-ng --cpu {{.totalVcpus}} --timeout 0 &
         name: cloudinitdisk
   dataVolumeTemplates:
   - metadata:

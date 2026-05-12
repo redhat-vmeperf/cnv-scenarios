@@ -240,17 +240,21 @@ check_cpu_limits() {
     local label_key="$1"
     local label_value="$2"
     local namespace="$3"
-    local expected_cpu="$4"
-    local private_key="$5"
-    local vm_user="$6"
-    local results_dir="${7:-/tmp/kube-burner-validations}"
+    local expected_cores="$4"
+    local expected_sockets="${5:-1}"
+    local expected_total_vcpus="${6:-$expected_cores}"
+    local private_key="$7"
+    local vm_user="$8"
+    local results_dir="${9:-/tmp/kube-burner-validations}"
     
     echo "=============================================="
     echo "  CPU Limits Validation"
     echo "=============================================="
     echo "Namespace: ${namespace}"
     echo "Label: ${label_key}=${label_value}"
-    echo "Expected CPU Cores: ${expected_cpu}"
+    echo "Expected CPU Cores: ${expected_cores}"
+    echo "Expected CPU Sockets: ${expected_sockets}"
+    echo "Expected Total vCPUs: ${expected_total_vcpus}"
     echo "SSH User: ${vm_user}"
     echo "Results: ${results_dir}"
     echo "----------------------------------------------"
@@ -260,7 +264,7 @@ check_cpu_limits() {
     
     # Phase 1: Discover VMs
     echo ""
-    echo "[Phase 1/4] Discovering VMs..."
+    echo "[Phase 1/5] Discovering VMs..."
     local vms
     vms=$(get_vms "${namespace}" "${label_key}" "${label_value}")
     local vm_count=$(echo "${vms}" | wc -w)
@@ -274,23 +278,23 @@ check_cpu_limits() {
     echo "✓ Found ${vm_count} VM(s): ${vms}"
     log_validation_checkpoint "vm_discovery" "PASS" "Found VMs: ${vms}"
     
-    # Track validation status for JSON report
     local guest_os_validation_status="SKIP"
     local stress_ng_validation_status="SKIP"
+    local spec_sockets_status="SKIP"
     local overall_status="SUCCESS"
     
     # Phase 2: Check VM spec CPU cores
     echo ""
-    echo "[Phase 2/4] Checking VM spec CPU cores..."
+    echo "[Phase 2/5] Checking VM spec CPU cores..."
     for vm in ${vms}; do
         echo "  Checking ${vm}..."
         
         local actual_cpu
-        actual_cpu=$(oc get vm -n "${namespace}" "${vm}" -o jsonpath='{.spec.template.spec.domain.cpu.cores}')
+        actual_cpu=$(oc get vm -n "${namespace}" "${vm}" -o jsonpath={.spec.template.spec.domain.cpu.cores})
         
-        if [ "${actual_cpu}" != "${expected_cpu}" ]; then
-            echo "  ✗ ${vm}: CPU cores mismatch. Expected: ${expected_cpu}, Actual: ${actual_cpu}"
-            log_validation_checkpoint "vm_spec_cpu_cores" "FAIL" "Expected ${expected_cpu}, got ${actual_cpu}"
+        if [ "${actual_cpu}" != "${expected_cores}" ]; then
+            echo "  ✗ ${vm}: CPU cores mismatch. Expected: ${expected_cores}, Actual: ${actual_cpu}"
+            log_validation_checkpoint "vm_spec_cpu_cores" "FAIL" "Expected ${expected_cores}, got ${actual_cpu}"
             overall_status="FAILED"
             break
         fi
@@ -298,15 +302,37 @@ check_cpu_limits() {
         log_validation_checkpoint "vm_spec_cpu_cores" "PASS" "VM ${vm}: ${actual_cpu} CPU cores in spec"
     done
     
-    # Phase 3: Guest OS CPU validation
+    # Phase 2b: Check VM spec CPU sockets
+    if [ "${overall_status}" = "SUCCESS" ] && [ "${expected_sockets}" -gt 1 ]; then
+        echo ""
+        echo "[Phase 2b/5] Checking VM spec CPU sockets..."
+        for vm in ${vms}; do
+            echo "  Checking ${vm}..."
+            
+            local actual_sockets
+            actual_sockets=$(oc get vm -n "${namespace}" "${vm}" -o jsonpath={.spec.template.spec.domain.cpu.sockets})
+            actual_sockets=${actual_sockets:-1}
+            
+            if [ "${actual_sockets}" != "${expected_sockets}" ]; then
+                echo "  ✗ ${vm}: CPU sockets mismatch. Expected: ${expected_sockets}, Actual: ${actual_sockets}"
+                log_validation_checkpoint "vm_spec_cpu_sockets" "FAIL" "Expected ${expected_sockets} sockets, got ${actual_sockets}"
+                overall_status="FAILED"
+                break
+            fi
+            echo "  ✓ ${vm}: ${actual_sockets} CPU sockets in spec"
+            log_validation_checkpoint "vm_spec_cpu_sockets" "PASS" "VM ${vm}: ${actual_sockets} CPU sockets in spec"
+            spec_sockets_status="PASS"
+        done
+    fi
+    
+    # Phase 3: Guest OS CPU validation (nproc should show total vCPUs = cores * sockets)
     if [ "${overall_status}" = "SUCCESS" ] && [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
         echo ""
-        echo "[Phase 3/4] Checking guest OS CPU configuration..."
+        echo "[Phase 3/5] Checking guest OS CPU configuration (expecting ${expected_total_vcpus} vCPUs)..."
         
         for vm in ${vms}; do
             echo "  Checking ${vm}..."
             
-            # Test SSH connectivity
             local test_output
             test_output=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
             
@@ -318,10 +344,9 @@ check_cpu_limits() {
             
             echo "  ✓ ${vm}: SSH connected"
             
-            # Check CPU count in guest OS using nproc
             local guest_cpu_count
             guest_cpu_count=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "nproc" 2>/dev/null || echo "0")
-            guest_cpu_count=$(echo "${guest_cpu_count}" | head -1 | tr -cd '0-9')
+            guest_cpu_count=$(echo "${guest_cpu_count}" | head -1 | tr -cd 0-9)
             guest_cpu_count=${guest_cpu_count:-0}
             
             if [ "${guest_cpu_count}" -eq 0 ]; then
@@ -331,41 +356,41 @@ check_cpu_limits() {
                 break
             fi
             
-            if [ "${guest_cpu_count}" != "${expected_cpu}" ]; then
-                echo "  ✗ ${vm}: Guest OS CPU count mismatch. Expected: ${expected_cpu}, Actual: ${guest_cpu_count}"
-                log_validation_checkpoint "guest_os_cpu_count" "FAIL" "Expected ${expected_cpu}, got ${guest_cpu_count}"
+            if [ "${guest_cpu_count}" != "${expected_total_vcpus}" ]; then
+                echo "  ✗ ${vm}: Guest OS vCPU count mismatch. Expected: ${expected_total_vcpus} (${expected_cores} cores x ${expected_sockets} sockets), Actual: ${guest_cpu_count}"
+                log_validation_checkpoint "guest_os_cpu_count" "FAIL" "Expected ${expected_total_vcpus} vCPUs, got ${guest_cpu_count}"
                 overall_status="FAILED"
                 break
             fi
             
-            echo "  ✓ ${vm}: Guest OS shows ${guest_cpu_count} CPUs"
-            log_validation_checkpoint "guest_os_cpu_count" "PASS" "VM ${vm}: ${guest_cpu_count} CPUs visible in guest OS"
+            echo "  ✓ ${vm}: Guest OS shows ${guest_cpu_count} vCPUs (${expected_cores} cores x ${expected_sockets} sockets)"
+            log_validation_checkpoint "guest_os_cpu_count" "PASS" "VM ${vm}: ${guest_cpu_count} vCPUs visible in guest OS"
             guest_os_validation_status="PASS"
         done
     else
         echo ""
-        echo "[Phase 3/4] Skipping guest OS CPU validation (no SSH credentials)"
+        echo "[Phase 3/5] Skipping guest OS CPU validation (no SSH credentials)"
         log_validation_checkpoint "guest_os_cpu_count" "SKIP" "SSH credentials not provided"
     fi
     
-    # Phase 4: Check stress-ng processes
+    # Phase 4: Check stress-ng processes (should match total vCPUs)
     if [ "${overall_status}" = "SUCCESS" ] && [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
         echo ""
-        echo "[Phase 4/4] Checking stress-ng-cpu processes..."
+        echo "[Phase 4/5] Checking stress-ng-cpu processes (expecting ${expected_total_vcpus})..."
         
         for vm in ${vms}; do
             echo "  Checking ${vm}..."
             
             local stress_process_count
             stress_process_count=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
-                "ps aux | grep -c '[s]tress-ng-cpu'" 2>/dev/null || echo "0")
-            stress_process_count=$(echo "${stress_process_count}" | head -1 | tr -cd '0-9')
+                "ps aux | grep -c [s]tress-ng-cpu" 2>/dev/null || echo "0")
+            stress_process_count=$(echo "${stress_process_count}" | head -1 | tr -cd 0-9)
             stress_process_count=${stress_process_count:-0}
             
-            if [ "${stress_process_count}" != "${expected_cpu}" ]; then
+            if [ "${stress_process_count}" != "${expected_total_vcpus}" ]; then
                 echo "  ✗ ${vm}: stress-ng-cpu process count mismatch"
-                echo "    Expected: ${expected_cpu} (1 per CPU core), Actual: ${stress_process_count}"
-                log_validation_checkpoint "stress_ng_processes" "FAIL" "Expected ${expected_cpu}, got ${stress_process_count}"
+                echo "    Expected: ${expected_total_vcpus} (1 per vCPU), Actual: ${stress_process_count}"
+                log_validation_checkpoint "stress_ng_processes" "FAIL" "Expected ${expected_total_vcpus}, got ${stress_process_count}"
                 overall_status="FAILED"
                 break
             fi
@@ -376,8 +401,30 @@ check_cpu_limits() {
         done
     else
         echo ""
-        echo "[Phase 4/4] Skipping stress-ng process validation (no SSH credentials)"
+        echo "[Phase 4/5] Skipping stress-ng process validation (no SSH credentials)"
         log_validation_checkpoint "stress_ng_processes" "SKIP" "SSH credentials not provided"
+    fi
+    
+    # Phase 5: Check VMI status for QEMU warnings (CNV-66505)
+    if [ "${overall_status}" = "SUCCESS" ] && [ "${expected_total_vcpus}" -gt 64 ]; then
+        echo ""
+        echo "[Phase 5/5] Checking for QEMU/KVM hotplug CPU warnings (CNV-66505)..."
+        for vm in ${vms}; do
+            local virt_launcher_pod
+            virt_launcher_pod=$(oc get pods -n "${namespace}" -l "kubevirt.io/domain=${vm}" -o jsonpath={.items[0].metadata.name} 2>/dev/null)
+            if [ -n "${virt_launcher_pod}" ]; then
+                local qemu_warning
+                qemu_warning=$(oc logs -n "${namespace}" "${virt_launcher_pod}" 2>/dev/null | grep -i "hotpluggable cpus requested.*exceeds" || true)
+                if [ -n "${qemu_warning}" ]; then
+                    echo "  ⚠ ${vm}: QEMU KVM warning detected (CNV-66505):"
+                    echo "    ${qemu_warning}"
+                    log_validation_checkpoint "qemu_cpu_warning" "WARN" "CNV-66505: ${qemu_warning}"
+                else
+                    echo "  ✓ ${vm}: No QEMU hotplug CPU warnings"
+                    log_validation_checkpoint "qemu_cpu_warning" "PASS" "No hotplug CPU warnings"
+                fi
+            fi
+        done
     fi
     
     # Generate summary
@@ -402,7 +449,9 @@ check_cpu_limits() {
 {
     "label_key": "${label_key}",
     "label_value": "${label_value}",
-    "expected_cpu_cores": ${expected_cpu},
+    "expected_cpu_cores": ${expected_cores},
+    "expected_cpu_sockets": ${expected_sockets},
+    "expected_total_vcpus": ${expected_total_vcpus},
     "vm_count": ${vm_count},
     "ssh_validation_enabled": $([ -n "${private_key}" ] && echo "true" || echo "false"),
     "total_duration_seconds": ${duration}
@@ -410,7 +459,6 @@ check_cpu_limits() {
 PARAMS
 )
     
-    # Generate validations JSON using actual tracked status
     local spec_status="PASS"
     [ "${overall_status}" = "FAILED" ] && spec_status="FAIL"
     
@@ -418,13 +466,13 @@ PARAMS
     local stress_ng_msg
     
     if [ "${guest_os_validation_status}" = "PASS" ]; then
-        guest_os_msg="Guest OS CPU count validation passed"
+        guest_os_msg="Guest OS vCPU count validation passed (${expected_total_vcpus} vCPUs)"
     else
-        guest_os_msg="Guest OS CPU count validation skipped (SSH connection failed or not configured)"
+        guest_os_msg="Guest OS vCPU count validation skipped (SSH connection failed or not configured)"
     fi
     
     if [ "${stress_ng_validation_status}" = "PASS" ]; then
-        stress_ng_msg="stress-ng-cpu process count validation passed (${expected_cpu} processes)"
+        stress_ng_msg="stress-ng-cpu process count validation passed (${expected_total_vcpus} processes)"
     else
         stress_ng_msg="stress-ng-cpu process count validation skipped (SSH connection failed or not configured)"
     fi
@@ -433,7 +481,8 @@ PARAMS
     validations_json=$(cat <<VALIDATIONS
 [
     {"phase": "vm_discovery", "status": "PASS", "message": "Found ${vm_count} VMs"},
-    {"phase": "vm_spec_cpu_cores", "status": "${spec_status}", "message": "VM spec CPU cores validation (${expected_cpu} cores)"},
+    {"phase": "vm_spec_cpu_cores", "status": "${spec_status}", "message": "VM spec CPU cores validation (${expected_cores} cores)"},
+    {"phase": "vm_spec_cpu_sockets", "status": "${spec_sockets_status}", "message": "VM spec CPU sockets validation (${expected_sockets} sockets)"},
     {"phase": "guest_os_cpu_count", "status": "${guest_os_validation_status}", "message": "${guest_os_msg}"},
     {"phase": "stress_ng_processes", "status": "${stress_ng_validation_status}", "message": "${stress_ng_msg}"}
 ]
@@ -443,7 +492,7 @@ VALIDATIONS
     save_validation_report "cpu-limits" "${overall_status}" "${namespace}" "${params_json}" "${validations_json}" "${results_dir}"
     
     if [ "${overall_status}" = "SUCCESS" ]; then
-        echo "SUCCESS: All VMs have correct CPU configuration"
+        echo "SUCCESS: All VMs have correct CPU configuration (${expected_total_vcpus} vCPUs = ${expected_cores} cores x ${expected_sockets} sockets)"
         return 0
     else
         return 1
