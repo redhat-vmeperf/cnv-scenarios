@@ -3,60 +3,85 @@
 # Auto-detect available network interfaces on worker nodes
 # Returns the first unused physical interface that can be used for NIC hot-plug testing
 #
+# Uses NodeNetworkState (NNS) CRs from NMState instead of oc debug pods,
+# which is 100x faster and doesn't require pod scheduling.
+#
 
-set -e
-
-# Get list of worker nodes
-WORKER_NODES=$(oc get nodes -l node-role.kubernetes.io/worker= -o jsonpath='{.items[*].metadata.name}')
+WORKER_NODES=$(oc get nodes -l node-role.kubernetes.io/worker= -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
 
 if [ -z "$WORKER_NODES" ]; then
     echo "ERROR: No worker nodes found" >&2
     exit 1
 fi
 
-# Function to check if an interface is available on a node
 check_interface_available() {
     local node=$1
     local interface=$2
-    
-    # Note: oc debug outputs extra lines, so we use grep -q for boolean checks
-    # and filter output to handle multi-line responses
-    
-    # Check if interface exists
-    if ! oc debug "node/${node}" -- chroot /host ip link show "$interface" 2>/dev/null | grep -q "$interface"; then
+
+    local nns_json
+    nns_json=$(oc get nns "$node" -o json 2>/dev/null) || return 1
+
+    local iface_json
+    iface_json=$(echo "$nns_json" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+ifaces = data.get('status', {}).get('currentState', {}).get('interfaces', [])
+for i in ifaces:
+    if i.get('name') == '$interface':
+        json.dump(i, sys.stdout)
+        sys.exit(0)
+sys.exit(1)
+" 2>/dev/null) || return 1
+
+    # Check if interface has an IPv4 address (skip if it does)
+    if echo "$iface_json" | python3 -c "
+import sys, json
+i = json.load(sys.stdin)
+addrs = i.get('ipv4', {}).get('address', [])
+if addrs:
+    sys.exit(0)
+sys.exit(1)
+" 2>/dev/null; then
         return 1
     fi
-    
-    # Check if interface has an IP address (should not for testing)
-    if oc debug "node/${node}" -- chroot /host ip addr show "$interface" 2>/dev/null | grep -q "inet "; then
+
+    # Check if interface is part of a bridge (has controller/master)
+    if echo "$iface_json" | python3 -c "
+import sys, json
+i = json.load(sys.stdin)
+if i.get('controller') or i.get('bridge', {}).get('port'):
+    sys.exit(0)
+sys.exit(1)
+" 2>/dev/null; then
         return 1
     fi
-    
-    # Check if interface is already in a bridge
-    if oc debug "node/${node}" -- chroot /host ip link show "$interface" 2>/dev/null | grep -q "master "; then
-        return 1
-    fi
-    
-    # Check if interface has default route
-    if oc debug "node/${node}" -- chroot /host ip route show dev "$interface" 2>/dev/null | grep -q "default"; then
-        return 1
-    fi
-    
+
     return 0
 }
 
-# Function to get physical interfaces on a node
 get_physical_interfaces() {
     local node=$1
-    
-    # Get list of physical interfaces (exclude virtual, loopback, etc.)
-    oc debug "node/${node}" -- chroot /host ls -1 /sys/class/net/ 2>/dev/null | grep -E "^(eth|ens|enp|em)" || echo ""
+    oc get nns "$node" -o json 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+ifaces = data.get('status', {}).get('currentState', {}).get('interfaces', [])
+for i in ifaces:
+    name = i.get('name', '')
+    itype = i.get('type', '')
+    if itype == 'ethernet' and (name.startswith('ens') or name.startswith('enp') or name.startswith('eth') or name.startswith('em')):
+        print(name)
+" 2>/dev/null
 }
 
-# Try to find a common available interface across all worker nodes
 echo "Detecting available interfaces on worker nodes..." >&2
 
 FIRST_NODE=$(echo "$WORKER_NODES" | awk '{print $1}')
+
+# Verify NMState NNS resources are available
+if ! oc get nns "$FIRST_NODE" &>/dev/null; then
+    echo "ERROR: NodeNetworkState not found for $FIRST_NODE (is NMState installed?)" >&2
+    exit 1
+fi
 
 echo "Checking node: $FIRST_NODE" >&2
 CANDIDATE_INTERFACES=$(get_physical_interfaces "$FIRST_NODE")
@@ -66,13 +91,13 @@ if [ -z "$CANDIDATE_INTERFACES" ]; then
     exit 1
 fi
 
-# Check each candidate interface
+echo "Candidate interfaces: $CANDIDATE_INTERFACES" >&2
+
 for interface in $CANDIDATE_INTERFACES; do
     echo "Checking interface: $interface" >&2
-    
-    # Check if this interface is available on all worker nodes
+
     available_on_all=true
-    
+
     for node in $WORKER_NODES; do
         if ! check_interface_available "$node" "$interface"; then
             echo "  Interface $interface not available on node $node" >&2
@@ -80,7 +105,7 @@ for interface in $CANDIDATE_INTERFACES; do
             break
         fi
     done
-    
+
     if [ "$available_on_all" = true ]; then
         echo "Found available interface: $interface" >&2
         echo "$interface"
@@ -89,6 +114,9 @@ for interface in $CANDIDATE_INTERFACES; do
 done
 
 echo "ERROR: No available interface found across all worker nodes" >&2
-echo "Please specify baseInterface manually in vars.yml" >&2
+echo "Available interfaces on $FIRST_NODE:" >&2
+get_physical_interfaces "$FIRST_NODE" | while read -r iface; do
+    echo "  - $iface" >&2
+done
+echo "Please specify baseInterface manually" >&2
 exit 1
-
