@@ -64,3 +64,6 @@ metadataIndex: "cnv-metadata"                    # Elasticsearch index for run m
 PROM: ""                                   # Prometheus endpoint (set via environment to enable monitoring)
 PROM_TOKEN: ""                             # Prometheus token (set via environment to enable monitoring)
 
+
+# Disk bus type (virtio or scsi)
+diskBus: "scsi"

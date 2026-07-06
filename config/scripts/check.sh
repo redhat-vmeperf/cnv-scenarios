@@ -141,6 +141,17 @@ remote_command_password() {
     fi
     echo "${output}"
 }
+# SSH with key+password fallback for disk-limits validation
+_ssh_cmd() {
+    local ns="$1" key="$2" user="$3" vm="$4" cmd="$5"
+    local out
+    out=$(remote_command "$ns" "$key" "$user" "$vm" "$cmd" 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$out" ]; then echo "$out"; return 0; fi
+    out=$(remote_command_password "$ns" "fedora" "$user" "$vm" "$cmd" 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$out" ]; then echo "$out"; return 0; fi
+    return 1
+}
+
 
 # Check if VM is running and accessible via SSH
 check_vm_running() {
@@ -787,18 +798,39 @@ check_disk_limits() {
             echo "  Checking ${vm}..."
             
             local test_output
-            test_output=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
-            
-            if [ $? -ne 0 ] || [ -z "${test_output}" ]; then
-                echo "  ⚠ ${vm}: SSH connection failed, skipping guest OS validation"
-                log_validation_checkpoint "guest_os_disk_count" "SKIP" "VM ${vm}: SSH connection failed"
+            local SSH_RETRY_MAX=40
+            local SSH_RETRY_DELAY=10
+            local ssh_ok=false
+            local ssh_method="key"
+            for attempt in $(seq 1 $SSH_RETRY_MAX); do
+                test_output=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
+                if [ $? -eq 0 ] && [ -n "${test_output}" ]; then
+                    ssh_ok=true
+                    ssh_method="key"
+                    break
+                fi
+                # Fallback: try password auth (cloud-init sets password=fedora)
+                test_output=$(remote_command_password "${namespace}" "fedora" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
+                if [ $? -eq 0 ] && [ -n "${test_output}" ]; then
+                    ssh_ok=true
+                    ssh_method="password"
+                    break
+                fi
+                if [ $attempt -lt $SSH_RETRY_MAX ]; then
+                    echo "  ⏳ ${vm}: SSH attempt ${attempt}/${SSH_RETRY_MAX} failed, retrying in ${SSH_RETRY_DELAY}s..."
+                    sleep $SSH_RETRY_DELAY
+                fi
+            done
+            if [ "$ssh_ok" != "true" ]; then
+                echo "  ⚠ ${vm}: SSH connection failed after ${SSH_RETRY_MAX} attempts, skipping guest OS validation"
+                log_validation_checkpoint "guest_os_disk_count" "SKIP" "VM ${vm}: SSH connection failed after ${SSH_RETRY_MAX} attempts"
                 continue
             fi
             
-            echo "  ✓ ${vm}: SSH connected"
+            echo "  ✓ ${vm}: SSH connected via ${ssh_method} (attempt ${attempt}/${SSH_RETRY_MAX})"
             
             local blk_devices
-            blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE" 2>/dev/null)
+            blk_devices=$(_ssh_cmd "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE")
             
             if [ $? -ne 0 ] || [ -z "${blk_devices}" ]; then
                 echo "  ✗ ${vm}: Failed to get block devices"
@@ -839,7 +871,7 @@ check_disk_limits() {
             echo "  Checking ${vm}..."
             
             local blk_devices
-            blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE" 2>/dev/null)
+            blk_devices=$(_ssh_cmd "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE")
             
             if [ $? -ne 0 ] || [ -z "${blk_devices}" ]; then
                 continue

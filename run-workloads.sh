@@ -487,6 +487,33 @@ run_single_test() {
         sed -i "s#^esServer:.*#esServer: \"${esServer}\"#" "$temp_vars"
     fi
 
+
+    # Apply environment variable overrides to the vars file.
+    # For each "key: value" in the vars file, if a matching env var is set,
+    # override it. Skips PROM/PROM_TOKEN/esServer (handled above).
+    local _overridden=()
+    while IFS= read -r _line; do
+        [[ "$_line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$_line" ]] && continue
+        if [[ "$_line" =~ ^([a-zA-Z_][a-zA-Z0-9_]*):(.*)$ ]]; then
+            local _key="${BASH_REMATCH[1]}"
+            local _orig="${BASH_REMATCH[2]}"
+            [[ "$_key" == "PROM" || "$_key" == "PROM_TOKEN" || "$_key" == "esServer" ]] && continue
+            if [[ -n "${!_key+x}" && -n "${!_key}" ]]; then
+                local _val="${!_key}"
+                if [[ "$_orig" == *'"'* || "$_orig" == *"'"* ]]; then
+                    sed -i "s|^${_key}:.*|${_key}: \"${_val}\"|" "$temp_vars"
+                else
+                    sed -i "s|^${_key}:.*|${_key}: ${_val}|" "$temp_vars"
+                fi
+                _overridden+=("${_key}=${_val}")
+            fi
+        fi
+    done < "$temp_vars"
+    if [[ ${#_overridden[@]} -gt 0 ]]; then
+        logmain INFO "[$test_name] Env overrides applied: ${_overridden[*]}"
+    fi
+
     logmain INFO "[$test_name] Starting test"
     logmain INFO "[$test_name] Mode: $MODE"
     logmain INFO "[$test_name] Config: $config_file"

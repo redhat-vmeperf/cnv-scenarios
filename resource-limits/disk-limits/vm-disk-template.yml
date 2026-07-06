@@ -39,14 +39,14 @@ spec:
           - disk:
               bus: virtio
             name: rootdisk
-          {{- range $i := until (.diskCount | int) }}
-          - disk:
-              bus: virtio
-            name: datadisk-{{ add $i 1 }}
-          {{- end }}
           - disk:
               bus: virtio
             name: cloudinitdisk
+          {{- range $i := until (.diskCount | int) }}
+          - disk:
+              bus: {{ $.diskBus | default "scsi" }}
+            name: datadisk-{{ add $i 1 }}
+          {{- end }}
           interfaces:
           - masquerade: {}
             model: virtio
@@ -63,11 +63,6 @@ spec:
       - dataVolume:
           name: dvclone-{{.Replica}}
         name: rootdisk
-      {{- range $i := until (.diskCount | int) }}
-      - dataVolume:
-          name: datadisk-{{ add $i 1 }}-{{$.Replica}}
-        name: datadisk-{{ add $i 1 }}
-      {{- end }}
       - cloudInitNoCloud:
           userData: |-
             #cloud-config
@@ -85,38 +80,13 @@ spec:
             chpasswd:
               expire: false
 
-            runcmd:
-              - dnf install -y fio hdparm smartmontools
-              - |
-                DISK_INDEX=1
-                for dev in /dev/vd[b-z]; do
-                  if [ ! -b "$dev" ]; then continue; fi
-                  mount | grep -q "$dev" && continue
-                  if ! lsblk -no NAME "${dev}1" | grep -q .; then
-                    echo -e "label: gpt\n,," | sfdisk "$dev"
-                    partprobe "$dev"
-                    sleep 2
-                  fi
-                  part="${dev}1"
-                  if [ ! -b "$part" ]; then
-                    echo "Partition $part not found, skipping"
-                    continue
-                  fi
-                  fs_type=$(blkid -s TYPE -o value "$part" || true)
-                  if [ -z "$fs_type" ]; then
-                    mkfs.xfs -f "$part"
-                  fi
-                  mount_point="/mnt/disk${DISK_INDEX}"
-                  mkdir -p "$mount_point"
-                  uuid=$(blkid -s UUID -o value "$part")
-                  if ! grep -q "$uuid" /etc/fstab; then
-                    echo "UUID=$uuid $mount_point xfs defaults 0 0" >> /etc/fstab
-                  fi
-                  mount "$mount_point"
-                  DISK_INDEX=$((DISK_INDEX + 1))
-                done
-              - dd if=/dev/zero of=/mnt/disk1/testfile bs=1G count=10 &
         name: cloudinitdisk
+      {{- range $i := until (.diskCount | int) }}
+      - dataVolume:
+          name: datadisk-{{ add $i 1 }}-{{$.Replica}}
+        name: datadisk-{{ add $i 1 }}
+      {{- end }}
+
   dataVolumeTemplates:
   - metadata:
       name: dvclone-{{.Replica}}
