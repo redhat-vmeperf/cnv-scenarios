@@ -49,3 +49,6 @@ PROM_TOKEN: ""
 # Node Targeting Configuration (optional)
 nodeSelector: ""
 
+
+# Disk bus type (virtio or scsi)
+diskBus: "scsi"
