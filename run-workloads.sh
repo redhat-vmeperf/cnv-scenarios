@@ -277,18 +277,32 @@ setup_nic_hotplug() {
         local detect_script="${SCRIPT_DIR}/config/scripts/detect-available-interface.sh"
         if [[ -x "$detect_script" ]]; then
             logmain INFO "[nic-hotplug] Auto-detecting baseInterface..."
-            local detected=$("$detect_script" 2>/dev/null || true)
+            local detect_log
+            detect_log=$(mktemp)
+            local detected
+            detected=$(timeout 120 "$detect_script" 2>"$detect_log")
+            local detect_rc=$?
+            # Log stderr output for diagnostics
+            if [[ -s "$detect_log" ]]; then
+                cat "$detect_log" >&2
+            fi
+            rm -f "$detect_log"
+            if [[ $detect_rc -ne 0 ]]; then
+                detected=""
+            fi
             if [[ -n "$detected" ]]; then
                 export baseInterface="$detected"
                 logmain INFO "[nic-hotplug] Auto-detected baseInterface: $baseInterface"
             else
                 logerr "[nic-hotplug] Failed to auto-detect baseInterface"
-                logerr "[nic-hotplug] Please set baseInterface manually: baseInterface=ens2f0 ./run-workloads.sh nic-hotplug"
+                logerr "[nic-hotplug] Please set baseInterface manually: baseInterface=<iface> ./run-workloads.sh nic-hotplug"
+                logerr "[nic-hotplug] Check available interfaces with: oc get nns <worker-node> -o jsonpath=\"{.status.currentState.interfaces[*].name}\""
                 return 1
             fi
         else
             logerr "[nic-hotplug] detect-available-interface.sh not found or not executable"
-            logerr "[nic-hotplug] Please set baseInterface manually: baseInterface=ens2f0 ./run-workloads.sh nic-hotplug"
+            logerr "[nic-hotplug] Please set baseInterface manually: baseInterface=<iface> ./run-workloads.sh nic-hotplug"
+            logerr "[nic-hotplug] Check available interfaces with: oc get nns <worker-node> -o jsonpath=\"{.status.currentState.interfaces[*].name}\""
             return 1
         fi
     fi
@@ -926,7 +940,7 @@ ENVIRONMENT VARIABLES:
     Examples:
         cpuCores=8 ./run-workloads.sh cpu-limits
         vmsPerNamespace=100 targetNode=worker001 ./run-workloads.sh per-host-density
-        baseInterface=ens2f0 nicCount=20 ./run-workloads.sh nic-hotplug
+        baseInterface=ens1f1 nicCount=20 ./run-workloads.sh nic-hotplug
 
 AVAILABLE TESTS:
 EOF
