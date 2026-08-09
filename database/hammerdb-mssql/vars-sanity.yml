@@ -1,0 +1,68 @@
+# Sanity: smaller resources; same Windows image requirements apply.
+testNamespace: "cnv-sanity-hammerdb-mssql-TIMESTAMP"
+testName: "cnv-sanity-hammerdb-mssql"
+resultsPath: "/tmp/kube-burner-results/sanity-hammerdb-mssql"
+runTimestamp: "run-default"
+
+vmCount: 1
+counter: 1
+vmRunning: true
+
+# VM Shape — these values drive both VM creation AND validation expectations
+cpuCores: 8
+memory: "16Gi"
+rootStorage: "100Gi"
+dataDisks: 2
+diskSize: "100Gi"
+storageClassName: "ocs-storagecluster-ceph-rbd"
+volumeMode: "Block"
+
+# REQUIRED when running: set to "docker://…" or "http(s)://….qcow2" before executing.
+# Left empty here so the template renders; the test will fail at VM creation without a real URL.
+windowsImageUrl: "pvc://openshift-virtualization-os-images/windows-golden"
+
+privateKey: '/home/kni/.ssh/id_rsa'
+publicKey: '/home/kni/.ssh/id_rsa.pub'
+vmUser: 'Administrator'
+
+maxWaitTimeout: "45m"
+jobPause: "3m"
+nodeSelector: ""
+
+# Validation Configuration — each toggle enables/disables a check phase
+validateOS: true
+expectedOS: "Windows Server 2022"
+validateSSH: true
+validateApps: "MSSQLSERVER"
+validateCPU: true
+validateMemory: true
+validateNICs: true
+expectedNICs: 1
+initializeDisks: true
+validateDisks: true
+validateDiskUtil: false
+expectedDiskUtilGB: 0
+diskUtilTolerancePct: 10
+validateDiskUtilAfterProcess: true
+waitProcessName: "hammerdb"
+waitProcessTimeout: 30
+expectedDiskUtilAfterProcessGB: 50
+disableHammerdbSchedTaskAfterValidation: true
+
+# FIO data generation — minimal params to exercise the code path in sanity
+fillExtraDisks: true
+fioUrl: "https://github.com/axboe/fio/releases/download/fio-3.38/fio-3.38-x64.msi"
+fioSha256: ""
+allowUnpinnedFioInstall: false
+dirCount: 1
+filesPerDir: 2
+fileSize: "100M"
+depthCount: 1
+fioTimeout: 10
+expectedExtraDiskCapacityGB: 0
+expectedTotalDiskUtilGB: 0
+
+esServer: ""
+metadataIndex: "cnv-metadata"
+PROM: ""
+PROM_TOKEN: ""

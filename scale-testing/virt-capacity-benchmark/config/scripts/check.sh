@@ -184,7 +184,7 @@ function check_vm_running() {
             
             # Shuffle VM list and select required number
             local selected_vms
-            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | shuf | head -n "${vms_to_validate}")
+            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | grep -v '^$' | shuf | head -n "${vms_to_validate}")
             
             echo "Randomly selected VMs for SSH validation:"
             echo "${selected_vms}" | head -5
@@ -215,7 +215,7 @@ function check_vm_running() {
                     --local-ssh-opts="-o PreferredAuthentications=publickey" \
                     -n "${vm_ns}" -i "${private_key}" \
                     --command "hostname && echo SSH_OK" \
-                    "${vm_user}@${vm}" 2>&1 || echo "SSH_FAILED")
+                    "${vm_user}@vmi/${vm}" 2>&1 || echo "SSH_FAILED")
                     
                     if echo "${ssh_test}" | grep -q "SSH_OK"; then
                         ssh_success=true
@@ -262,9 +262,9 @@ function check_vm_running() {
                 ssh_validation_status="PASS"
                 log_validation_checkpoint "ssh_validation" "PASS" "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible"
             else
-                ssh_validation_status="PARTIAL"
-                log_validation_checkpoint "ssh_validation" "PARTIAL" "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible, ${ssh_vms_failed} failed"
-                # Note: We don't fail overall_status for partial SSH - it's informational
+                ssh_validation_status="FAIL"
+                log_validation_checkpoint "ssh_validation" "FAIL" "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible, ${ssh_vms_failed} failed"
+                overall_status="FAILURE"
             fi
         else
             if [ -z "${private_key}" ] || [ -z "${vm_user}" ]; then
@@ -402,7 +402,7 @@ function check_resize() {
             --local-ssh-opts="-o BatchMode=yes" \
             -n "${namespace}" -i "${private_key}" \
             --command "lsblk --json -v --output=NAME,SIZE" \
-            "${vm_user}@${vm}" 2>/dev/null || echo "SSH_FAILED")
+            "${vm_user}@vmi/${vm}" 2>/dev/null || echo "SSH_FAILED")
 
         if echo "${blk_devices}" | grep -q "SSH_FAILED"; then
             echo "  ✗ Failed to SSH to VM ${vm}"

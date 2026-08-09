@@ -22,9 +22,18 @@ nodeSelector: ""
 cpuCores: 1
 memory: "512Mi"
 
+# VM OS Configuration
+osType: "rhel9"
+
+# Guest OS Configuration (Linux or Windows)
+guestOS: "linux"
+windowsImageUrl: "pvc://openshift-virtualization-os-images/windows-golden"
+windowsRootDiskSize: "100Gi"
+
 # Storage Configuration (minimal)
 storage: "10Gi"
 storageClassName: "ocs-storagecluster-ceph-rbd"
+volumeMode: "Block"
 
 # Test Execution Control
 counter: 1

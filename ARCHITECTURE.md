@@ -98,14 +98,33 @@ TEST_ORDER=(
 )
 ```
 
+The `TEST_OS_SUPPORT` associative array declares which guest OS each test supports:
+
+```bash
+declare -A TEST_OS_SUPPORT=(
+    ["cpu-limits"]="both"
+    ["minimal-resources"]="linux"
+    ["hammerdb-mssql"]="windows"
+    # ... etc
+)
+```
+
+When `--os both` is used, each test is expanded into qualified names (e.g., `cpu-limits:linux`, `cpu-limits:windows`). Tests whose `TEST_OS_SUPPORT` does not match the requested OS are skipped.
+
 ### Mode Handling
 
-Two modes are supported via `--mode`:
+Two modes are supported via `--mode`, and guest OS selection via `--os`:
 
 | Mode | Vars File | Purpose |
 |------|-----------|---------|
 | `full` (default) | `vars.yml` | Full-scale testing with production-like values |
 | `sanity` | `vars-sanity.yml` | Quick validation with minimal resources |
+
+| OS Flag | Behaviour |
+|---------|-----------|
+| `linux` (default) | Run Linux guest variant only |
+| `windows` | Run Windows guest variant only (requires `windowsImageUrl`) |
+| `both` | Run both Linux and Windows variants per test |
 
 The `get_vars_file()` function selects the appropriate file:
 
@@ -165,6 +184,18 @@ run_setup() {
 - Auto-detects available network interface via `detect-available-interface.sh`
 - Reads `nicCount` from vars file based on mode
 
+### Windows Auto-Corrections
+
+After vars file processing, `run-workloads.sh` checks whether `guestOS` is `windows`. If so, it applies the following auto-corrections (unless explicitly overridden via environment):
+
+| Variable | Auto-set value | Reason |
+|---|---|---|
+| `vmUser` | `Administrator` | Linux defaults (`fedora`, `cloud-user`) fail SSH to Windows |
+| `maxWaitTimeout` | `30m` | CDI image import + Windows boot is slower than Linux |
+| `windowsRootDiskSize` | `90Gi` | Windows images are much larger than Linux cloud images |
+| `max_ssh_retries` | `20` | Windows SSH service starts later than Linux |
+| `vmMemory` / `memory` | `2Gi` (if below) | Windows Server minimum is 2Gi; tests like per-host-density default to 256Mi for Linux |
+
 ### Parallel Execution
 
 When `--parallel` is used with multiple tests:
@@ -175,6 +206,15 @@ When `--parallel` is used with multiple tests:
 4. Temp logs are displayed and cleaned up
 
 This approach handles the bash limitation where associative arrays don't propagate from subshells.
+
+#### `--os both --parallel` Specifics
+
+When combining `--os both` with `--parallel`, additional logic applies:
+
+1. **Test expansion** (`expand_tests_for_os`): Each test supporting `both` becomes two OS-qualified entries (`test:linux`, `test:windows`). Linux-only and Windows-only tests remain singular.
+2. **Namespace qualification**: `testNamespace` and `testNamespacePrefix` gain `-linux`/`-windows` suffixes to prevent resource collisions between concurrent OS variants.
+3. **NIC hot-plug serialization**: `nic-hotplug:linux` and `nic-hotplug:windows` are removed from the parallel batch and run sequentially after all other tests finish. This avoids NNCP conflicts when both runs target the same physical NIC.
+4. **Shared directory caveat**: Both OS variants of the same test execute within a single source directory concurrently. Template rendering is read-only and vars are processed into temp files, so this is safe for current templates. Future templates that write state to the source directory could race.
 
 ### Results Structure
 
@@ -216,8 +256,8 @@ Validation scripts are organized in a two-tier system based on scenario requirem
 
 | Script | Location | Used By | Purpose |
 |--------|----------|---------|---------|
-| `check.sh` (global) | `config/scripts/` | 8 scenarios | Full validation suite with retry mechanism |
-| `wrapper.sh` | `config/scripts/` | 8 scenarios | Dispatcher that invokes check.sh with logging |
+| `check.sh` (global) | `config/scripts/` | 9 scenarios | Full validation suite with retry mechanism |
+| `wrapper.sh` | `config/scripts/` | 9 scenarios | Dispatcher that invokes check.sh with logging |
 | `check.sh` (local) | `scale-testing/*/config/scripts/` | 2 scenarios | Percentage-based sampling for scale tests |
 
 ### Shared Scripts (`config/scripts/`)
@@ -252,22 +292,107 @@ LONG_WAIT=30         # Seconds between later retries
 | `check_vm_running` | Validates VMs are running + SSH accessible | label_key, label_value, namespace, private_key, vm_user |
 | `check_vm_shutdown` | Validates VMs are stopped | label_key, label_value, namespace |
 | `check_resize` | Validates PVC resize completed | label_key, label_value, namespace, expected_size, private_key, vm_user, results_dir |
-| `check_cpu_limits` | Validates CPU cores via SSH (`nproc`) | label_key, label_value, namespace, expected_cores, private_key, vm_user, results_dir |
-| `check_memory_limits` | Validates memory via SSH (`free -m`) with 15% tolerance | label_key, label_value, namespace, expected_memory, private_key, vm_user, results_dir |
-| `check_disk_limits` | Validates disk count/size via SSH (`lsblk`) | label_key, label_value, namespace, disk_count, disk_size, private_key, vm_user, results_dir |
-| `check_disk_hotplug` | Validates hot-plugged disks attached and mounted | label_key, label_value, namespace, disk_count, pvc_size, private_key, vm_user, validate_by_size, validate_from_os, results_dir |
+| `check_cpu_limits` | Validates CPU cores via SSH (`nproc`/WMI) + workload processes | label_key, label_value, namespace, expected_cores, private_key, vm_user, results_dir, [guest_os] |
+| `check_memory_limits` | Validates memory via SSH (`free -m`/WMI) with 15% tolerance | label_key, label_value, namespace, expected_memory, private_key, vm_user, results_dir, [guest_os] |
+| `check_disk_limits` | Validates disk count/size via SSH (`lsblk`/`Get-Disk`) | label_key, label_value, namespace, disk_count, disk_size, private_key, vm_user, results_dir, [guest_os] |
+| `check_disk_hotplug` | Validates hot-plugged disks attached and mounted | label_key, label_value, namespace, disk_count, pvc_size, private_key, vm_user, validate_by_size, validate_from_os, results_dir, [guest_os] |
 | `check_nic_hotplug` | Validates NNCPs, NADs, and NIC count (5 phases) | label_key, label_value, namespace, nic_count, private_key, vm_user, validate_interfaces, results_dir |
 | `check_large_disk` | Validates large disk visibility (4 phases) | label_key, label_value, namespace, disk_size, private_key, vm_user, results_dir |
 | `check_high_memory` | Validates high memory allocation with tolerance | label_key, label_value, namespace, memory_size, private_key, vm_user, results_dir |
 | `check_performance_metrics` | Validates CirrOS VMs (password-based SSH) | label_key, label_value, namespace, vm_password, vm_user, results_dir |
+| `check_windows_vm` | 12-phase Windows VM validation + 1 optional post-validation phase via `virtctl ssh` + PowerShell | label_key, label_value, namespace, private_key, vm_user, [key=value …], results_dir |
 
 **Validation Flow Example (check_memory_limits):**
 ```
 Phase 1/4: Discover VMs via label selector
 Phase 2/4: Check VM spec memory configuration
-Phase 3/4: SSH into guest, verify memory via `free -m` (15% tolerance)
-Phase 4/4: Check stress-ng processes (if applicable)
+Phase 3/4: SSH into guest, verify memory via `free -m` (Linux) or WMI (Windows) -- 15% tolerance
+Phase 4/4: Check memory workload -- stress-ng processes (Linux, 0 = FAIL) or bootstrap
+           4 CNV_MEM_BURN=1 workers and verify count + free memory pressure (Windows)
 ```
+
+**Validation Flow: `check_windows_vm` (12 phases + vm_discovery + 1 optional post-validation phase)**
+
+`check_windows_vm` uses a `key=value` argument pattern rather than positional parameters so that new phases can be added without breaking existing callers. All phases after the five fixed positional args (`label_key`, `label_value`, `namespace`, `private_key`, `vm_user`) are parsed from `key=value` pairs; the last argument is always `results_dir`.
+
+```
+Pre-loop: vm_discovery        — VMs exist with label selector
+Phase 1:  SSH check           — echo SSH_OK over virtctl ssh; gates all subsequent phases
+Phase 2:  OS check            — Win32_OperatingSystem.Caption contains expectedOS (case-insensitive)
+Phase 3:  App check           — each service in validateApps (comma-separated) is Running
+Phase 4:  CPU check           — logical CPU count == cpuCores (exact)
+Phase 5:  Memory check        — TotalPhysicalMemory within 5% of memory
+Phase 6:  NIC check           — count of Up NICs with IPv4 == expectedNICs (exact)
+Phase 7:  Disk init (action)  — bring offline/RAW disks online, GPT-partition, NTFS-format; idempotent
+Phase 8:  Disk count/size     — non-system disk count == dataDisks; total size within 5% of dataDisks×diskSize
+Phase 9:  Disk utilization    — used space on non-C: volumes; asserts vs expectedDiskUtilGB (0 = report-only)
+Phase 10: Post-process util   — polls for waitProcessName exit; asserts disk util vs expectedDiskUtilAfterProcessGB
+Phase 11: FIO data gen        — fills extra disks with high-entropy data via FIO; validates per-drive counts/sizes
+Phase 12: Aggregate disk util — total used space across all non-C: drives; asserts vs expectedTotalDiskUtilGB
+Phase 13 (optional): Disable scheduled task — after all other phases complete, disables any
+                      Scheduled Task matching *waitProcessName* so it will not auto-start on
+                      the next VM reboot; gated on disableHammerdbSchedTaskAfterValidation=true
+```
+
+Phases 8–10 are gated on Phase 7 (`disk_init_ok` flag). A failed or skipped Phase 7 causes downstream phases to report `SKIP`. Phase 11 gates on `fillExtraDisks=true` + `disk_init_ok` + `ssh_ok`. Phase 12 gates on Phase 11 success. Phase 13 runs by default (`disableHammerdbSchedTaskAfterValidation=true`) when `ssh_ok` and a non-empty `waitProcessName` are present; it is independent of Phases 7–12 outcomes. Set `disableHammerdbSchedTaskAfterValidation=false` to leave the scheduled task enabled so HammerDB reruns on every reboot.
+
+**`beforeCleanup` multi-word value encoding**
+
+Go template expansion happens before shell word-splitting, so a value like `expectedOS=Windows Server 2022` becomes three separate shell tokens and the parser only sees `expectedOS=Windows`. The convention used in `hammerdb-mssql-test.yml` is to encode spaces as underscores in the template and decode them in the script:
+
+```yaml
+# Template (hammerdb-mssql-test.yml)
+beforeCleanup: '... expectedOS={{ .expectedOS | default "Windows" | replace " " "_" }} ...'
+```
+
+```bash
+# Script (check_windows_vm in check.sh)
+local expected_os="${cfg[expectedOS]:-Windows}"
+expected_os="${expected_os//_/ }"   # decode underscores back to spaces
+```
+
+Apply the same encoding to any `beforeCleanup` parameter whose value may contain spaces.
+
+### Windows Guest OS Validation
+
+Several validation functions contain dual Linux/Windows code paths gated on the `guest_os` parameter (passed from the kube-burner vars `guestOS` field). When `guest_os` is `windows`, validation commands use PowerShell over `virtctl ssh` with the `Administrator` user and WMI/CIM queries instead of Linux utilities.
+
+**Per-flow Windows validation details:**
+
+| Flow | Linux Tool | Windows Tool | Notes |
+|------|-----------|-------------|-------|
+| cpu-limits Phase 3 | `nproc` | WMI `NumberOfLogicalProcessors` | Exact match |
+| cpu-limits Phase 4 | count stress-ng processes | Bootstrap `CNV_CPU_BURN=1` workers via `Invoke-CimMethod`, count via WMI | Workers launched via SSH; no image-side helper required |
+| memory-limits Phase 3 | `free -m` | WMI `TotalPhysicalMemory/1MB` | 15% tolerance |
+| memory-limits Phase 4 | count stress-ng processes (0 = FAIL) | Bootstrap 4 `CNV_MEM_BURN=1` workers (90% RAM / 4), count via WMI + free memory pressure check | Workers launched via SSH; no additional software required |
+| disk-limits Phase 4 | `lsblk` (count) | `Get-Disk` non-system disks | Excludes system disk by boot flag |
+| disk-limits Phase 5 | `lsblk` (sizes) | `Get-Disk` sizes in GB | 5% tolerance |
+| disk-hotplug Phase 3 | `lsblk` | `Get-Disk` + `Initialize-Disk` (GPT/NTFS) | Only when `validateHotplugFromOs=true` |
+| disk-hotplug Phase 4 | `lsblk` (sizes) | `Get-Disk` sizes | 5% tolerance |
+| nic-hotplug Phase 5 | `ip -br link show` | VirtIO driver check + `Get-NetAdapter` Up count | Requires VirtIO network drivers |
+| high-memory Phase 3 | `free -m` | WMI `TotalPhysicalMemory/1MB` | 15% tolerance |
+| large-disk Phase 3 | `lsblk --json` | `Get-Disk` non-system | Presence check |
+| large-disk Phase 4 | `lsblk -b` | `Get-Disk .Size` bytes to GB | 5% tolerance (min 1GB) |
+| per-host-density SSH | `hostname && echo SSH_OK` | `$env:COMPUTERNAME; echo SSH_OK` via PowerShell | Any failure = FAIL |
+
+**CPU burn bootstrap mechanism (cpu-limits Phase 4):**
+
+The validator dynamically builds a PowerShell script that:
+1. Queries `Win32_ComputerSystem.NumberOfLogicalProcessors` to determine core count
+2. Launches one infinite-loop worker per core using `Invoke-CimMethod -ClassName Win32_Process -MethodName Create`
+3. Each worker sets `$env:CNV_CPU_BURN=1` in its command line as a marker
+
+The script is base64-encoded as UTF-16LE and executed via `powershell.exe -EncodedCommand` to bypass SSH quoting issues. Workers are fully detached from the SSH session (WMI process creation does not depend on the parent shell).
+
+**Memory burn bootstrap mechanism (memory-limits Phase 4):**
+
+Uses the same `Invoke-CimMethod` + base64-encoded PowerShell pattern as CPU burn. The validator:
+1. Calculates `stress_total_mb` = 90% of expected VM memory, split across 4 workers (min 32MB each)
+2. Launches 4 detached workers, each allocating a `byte[]` of the per-worker size, filling it with random data, and touching every 4KB page in a continuous loop
+3. Each worker sets `$env:CNV_MEM_BURN=1` as a marker
+4. Validates exact worker count (4) and confirms free memory pressure dropped
+
+No additional software is required in the Windows image -- the workload uses only built-in PowerShell capabilities.
 
 All validation functions are wrapped by `retry_validation()` which:
 1. Attempts validation up to `MAX_RETRIES` times
@@ -344,12 +469,13 @@ jobs:
 cnv-scenarios/
 └── <category>/
     └── <scenario-name>/
-        ├── <scenario-name>-test.yml    # kube-burner config
-        ├── vars.yml                     # Full mode variables
-        ├── vars-sanity.yml              # Sanity mode variables
-        ├── vm-<scenario>-template.yml   # VM template (if needed)
+        ├── <scenario-name>-test.yml              # kube-burner config
+        ├── vars.yml                               # Full mode variables
+        ├── vars-sanity.yml                        # Sanity mode variables
+        ├── vm-<scenario>-template.yml             # Linux VM template
+        ├── vm-<scenario>-windows-template.yml     # Windows VM template (if OS=both)
         └── templates/
-            └── secret_ssh_public.yml    # SSH secret template
+            └── secret_ssh_public.yml              # SSH secret template
 ```
 
 ### Step 2: Register in run-workloads.sh
@@ -360,6 +486,11 @@ Add to `TEST_REGISTRY`:
 ```
 
 Add to `TEST_ORDER` in desired position.
+
+Add to `TEST_OS_SUPPORT` with the appropriate OS (`linux`, `windows`, or `both`):
+```bash
+["my-scenario"]="both"
+```
 
 ### Step 3: Create Config File
 

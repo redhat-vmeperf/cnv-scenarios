@@ -59,6 +59,13 @@ EOF
     echo "Validation report saved to: ${report_file}"
 }
 
+# Detect --local-ssh support in virtctl (v1.1+)
+if virtctl ssh --help 2>&1 | grep -qc "\-\-local-ssh "; then
+    LOCAL_SSH="--local-ssh"
+else
+    LOCAL_SSH=""
+fi
+
 #############################################
 # CHECK_VM_RUNNING FUNCTION
 # With configurable percentage-based SSH validation
@@ -73,6 +80,14 @@ function check_vm_running() {
     local percentage_to_validate="${6:-25}"
     local max_ssh_retries="${7:-8}"
     local results_dir="${8:-/tmp/kube-burner-validations}"
+    local guest_os="${9:-linux}"
+    local run_uuid="${10:-}"
+    
+    # Build label selector -- always include job counter label
+    local label_selector="${label_key}=${label_value}"
+    if [ -n "${run_uuid}" ]; then
+        label_selector="${label_selector},kube-burner.io/uuid=${run_uuid}"
+    fi
     
     # Set up logging
     mkdir -p "${results_dir}"
@@ -89,7 +104,9 @@ function check_vm_running() {
     echo "=============================================="
     echo "Namespace:         ${namespace}"
     echo "Label:             ${label_key}=${label_value}"
+    echo "Run UUID:          ${run_uuid:-all runs}"
     echo "SSH User:          ${vm_user:-not provided}"
+    echo "Guest OS:          ${guest_os}"
     echo "SSH Validation:    ${percentage_to_validate}%"
     echo "SSH Max Retries:   ${max_ssh_retries} (15s interval)"
     echo "Results Dir:       ${results_dir}"
@@ -100,7 +117,7 @@ function check_vm_running() {
     
     # VM Discovery
     local total_vms
-    total_vms=$(oc get vm ${ns_flag} -l "${label_key}=${label_value}" --no-headers 2>/dev/null | wc -l)
+    total_vms=$(oc get vm ${ns_flag} -l "${label_selector}" --no-headers 2>/dev/null | wc -l)
     
     if [ "${total_vms}" -eq 0 ]; then
         echo "ERROR: No VMs found with label ${label_key}=${label_value}"
@@ -120,7 +137,7 @@ function check_vm_running() {
     # Running State Check
     local running_check_start=$(date +%s)
     local running_vms
-    running_vms=$(oc get vm ${ns_flag} -l "${label_key}=${label_value}" -o jsonpath='{.items[?(@.status.ready==true)].metadata.name}' | wc -w)
+    running_vms=$(oc get vm ${ns_flag} -l "${label_selector}" -o jsonpath='{.items[?(@.status.ready==true)].metadata.name}' | wc -w)
     local running_check_duration=$(( $(date +%s) - running_check_start ))
     
     echo "Running VMs: ${running_vms}/${total_vms}"
@@ -130,7 +147,7 @@ function check_vm_running() {
     echo ""
     echo "VM Distribution by Node:"
     local node_distribution
-    node_distribution=$(oc get vmi ${ns_flag} -l "${label_key}=${label_value}" \
+    node_distribution=$(oc get vmi ${ns_flag} -l "${label_selector}" \
         -o jsonpath='{range .items[*]}{.status.nodeName}{"\n"}{end}' 2>/dev/null | \
         sort | uniq -c | sort -rn || echo "  Unable to get node distribution")
     if [ -n "${node_distribution}" ]; then
@@ -141,6 +158,7 @@ function check_vm_running() {
     echo ""
     
     local overall_status="SUCCESS"
+    local running_status="PASS"
     local ssh_validation_status="SKIP"
     local ssh_vms_validated=0
     local ssh_vms_passed=0
@@ -151,6 +169,7 @@ function check_vm_running() {
         echo "ERROR: Not all VMs are running. Expected: ${total_vms}, Running: ${running_vms}"
         log_validation_checkpoint "vm_running_state" "FAIL" "Expected ${total_vms} running, got ${running_vms}"
         overall_status="FAILURE"
+        running_status="FAIL"
     else
         log_validation_checkpoint "vm_running_state" "PASS" "All ${total_vms} VMs are running"
         echo "SUCCESS: All VMs are running"
@@ -176,14 +195,14 @@ function check_vm_running() {
             # Get all VM names with their namespaces (format: namespace/vmname)
             local all_vms
             if [ "${namespace}" = "all" ]; then
-                all_vms=$(oc get vm ${ns_flag} -l "${label_key}=${label_value}" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}')
+                all_vms=$(oc get vm ${ns_flag} -l "${label_selector}" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}')
             else
-                all_vms=$(oc get vm ${ns_flag} -l "${label_key}=${label_value}" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}')
+                all_vms=$(oc get vm ${ns_flag} -l "${label_selector}" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}')
             fi
             
             # Shuffle VM list and select required number
             local selected_vms
-            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | shuf | head -n "${vms_to_validate}")
+            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | grep -v '^$' | shuf | head -n "${vms_to_validate}")
             
             echo "Randomly selected VMs for SSH validation:"
             echo "${selected_vms}" | head -5
@@ -204,8 +223,13 @@ function check_vm_running() {
                 local last_error=""
                 
                 while [ ${retry_count} -lt ${max_ssh_retries} ] && [ "${ssh_success}" = "false" ]; do
+                local ssh_cmd="hostname && echo SSH_OK"
+                if [ "${guest_os}" = "windows" ]; then
+                    ssh_cmd='powershell.exe -NoProfile -Command "$env:COMPUTERNAME; echo SSH_OK"'
+                fi
+
                 local ssh_test
-                ssh_test=$(virtctl ssh \
+                ssh_test=$(virtctl ssh ${LOCAL_SSH} \
                     --local-ssh-opts="-o StrictHostKeyChecking=no" \
                     --local-ssh-opts="-o UserKnownHostsFile=/dev/null" \
                     --local-ssh-opts="-o ConnectTimeout=15" \
@@ -213,8 +237,8 @@ function check_vm_running() {
                     --local-ssh-opts="-o PasswordAuthentication=no" \
                     --local-ssh-opts="-o PreferredAuthentications=publickey" \
                     -n "${vm_ns}" -i "${private_key}" \
-                    --command "hostname && echo SSH_OK" \
-                    "${vm_user}@${vm}" 2>&1 || echo "SSH_FAILED")
+                    --command "${ssh_cmd}" \
+                    "${vm_user}@vmi/${vm}" 2>&1 || echo "SSH_FAILED")
                     
                     if echo "${ssh_test}" | grep -q "SSH_OK"; then
                         ssh_success=true
@@ -261,9 +285,9 @@ function check_vm_running() {
                 ssh_validation_status="PASS"
                 log_validation_checkpoint "ssh_validation" "PASS" "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible"
             else
-                ssh_validation_status="PARTIAL"
-                log_validation_checkpoint "ssh_validation" "PARTIAL" "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible, ${ssh_vms_failed} failed"
-                # Note: We don't fail overall_status for partial SSH - it's informational
+                ssh_validation_status="FAIL"
+                log_validation_checkpoint "ssh_validation" "FAIL" "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible, ${ssh_vms_failed} failed"
+                overall_status="FAILURE"
             fi
         else
             if [ -z "${private_key}" ] || [ -z "${vm_user}" ]; then
@@ -282,7 +306,7 @@ function check_vm_running() {
     
     # Get node distribution for JSON report
     local node_count
-    node_count=$(oc get vmi ${ns_flag} -l "${label_key}=${label_value}" \
+    node_count=$(oc get vmi ${ns_flag} -l "${label_selector}" \
         -o jsonpath='{range .items[*]}{.status.nodeName}{"\n"}{end}' 2>/dev/null | \
         sort -u | wc -l || echo "0")
     
@@ -315,7 +339,7 @@ PARAMS
     validations_json=$(cat <<VALIDATIONS
 [
     {"phase": "vm_discovery", "status": "PASS", "message": "Found ${total_vms} VMs", "duration_seconds": 0},
-    {"phase": "vm_running_state", "status": "$([ "${overall_status}" = "SUCCESS" ] && echo "PASS" || echo "FAIL")", "message": "${running_vms}/${total_vms} VMs running", "duration_seconds": ${running_check_duration}},
+    {"phase": "vm_running_state", "status": "${running_status}", "message": "${running_vms}/${total_vms} VMs running", "duration_seconds": ${running_check_duration}},
     {"phase": "ssh_validation", "status": "${ssh_validation_status}", "message": "${ssh_vms_passed}/${ssh_vms_validated} VMs SSH accessible", "duration_seconds": ${ssh_validation_duration}}
 ]
 VALIDATIONS
@@ -339,6 +363,13 @@ function check_vm_shutdown() {
     local label_value="$2"
     local namespace="$3"
     local results_dir="${4:-/tmp/kube-burner-validations}"
+    local run_uuid="${5:-}"
+    
+    # Build label selector -- always include job counter label
+    local label_selector="${label_key}=${label_value}"
+    if [ -n "${run_uuid}" ]; then
+        label_selector="${label_selector},kube-burner.io/uuid=${run_uuid}"
+    fi
     
     # Set up logging
     mkdir -p "${results_dir}"
@@ -355,6 +386,7 @@ function check_vm_shutdown() {
     echo "=============================================="
     echo "Namespace:   ${namespace}"
     echo "Label:       ${label_key}=${label_value}"
+    echo "Run UUID:    ${run_uuid:-all runs}"
     echo "Results Dir: ${results_dir}"
     echo ""
     
@@ -363,7 +395,7 @@ function check_vm_shutdown() {
     
     # VM Discovery
     local total_vms
-    total_vms=$(oc get vm ${ns_flag} -l "${label_key}=${label_value}" --no-headers 2>/dev/null | wc -l)
+    total_vms=$(oc get vm ${ns_flag} -l "${label_selector}" --no-headers 2>/dev/null | wc -l)
     
     if [ "${total_vms}" -eq 0 ]; then
         echo "ERROR: No VMs found with label ${label_key}=${label_value}"
@@ -383,7 +415,7 @@ function check_vm_shutdown() {
     # Shutdown State Check
     local shutdown_check_start=$(date +%s)
     local stopped_vms
-    stopped_vms=$(oc get vm ${ns_flag} -l "${label_key}=${label_value}" -o jsonpath='{.items[?(@.spec.runStrategy=="Halted")].metadata.name}' | wc -w)
+    stopped_vms=$(oc get vm ${ns_flag} -l "${label_selector}" -o jsonpath='{.items[?(@.spec.runStrategy=="Halted")].metadata.name}' | wc -w)
     local shutdown_check_duration=$(( $(date +%s) - shutdown_check_start ))
     
     echo "Stopped VMs: ${stopped_vms}/${total_vms}"
@@ -451,8 +483,8 @@ case "$1" in
     *)
         echo "Usage: $0 {check_vm_running|check_vm_shutdown} [args...]"
         echo ""
-        echo "check_vm_running <label_key> <label_value> <namespace> [private_key] [vm_user] [percentage_to_validate] [max_ssh_retries] [results_dir]"
-        echo "check_vm_shutdown <label_key> <label_value> <namespace> [results_dir]"
+        echo "check_vm_running <label_key> <label_value> <namespace> [private_key] [vm_user] [percentage_to_validate] [max_ssh_retries] [results_dir] [guest_os] [run_uuid]"
+        echo "check_vm_shutdown <label_key> <label_value> <namespace> [results_dir] [run_uuid]"
         exit 1
         ;;
 esac

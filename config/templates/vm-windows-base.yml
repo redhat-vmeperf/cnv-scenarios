@@ -1,0 +1,103 @@
+# Reference only — do not pass this file directly to kube-burner without templating.
+# Scenario-specific files (e.g. resource-limits/cpu-limits/vm-cpu-windows-template.yml)
+# follow this shape: q35, UEFI, VirtIO disks, masquerade NIC, TPM, Hyper-V enlightenments,
+# DataVolume from CDI registry (docker://…) or http(s) qcow2 URL, and qemuGuestAgent SSH propagation.
+#
+# See docs/windows-image-build.md for image requirements.
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: reference-windows-do-not-apply
+  annotations:
+    cnv-scenarios.io/role: reference-documentation
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        kubevirt.io/os: windows
+    spec:
+      domain:
+        clock:
+          timer:
+            hpet:
+              present: false
+            hyperv: {}
+            pit:
+              tickPolicy: delay
+            rtc:
+              tickPolicy: catchup
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+          interfaces:
+            - masquerade: {}
+              model: virtio
+              name: default
+          networkInterfaceMultiqueue: true
+          rng: {}
+          tpm: {}
+        features:
+          acpi: {}
+          apic: {}
+          smm:
+            enabled: true
+          hyperv:
+            frequencies: {}
+            ipi: {}
+            reenlightenment: {}
+            relaxed: {}
+            reset: {}
+            spinlocks:
+              spinlocks: 8191
+            synic: {}
+            tlbflush: {}
+            vapic: {}
+            vpindex: {}
+        firmware:
+          bootloader:
+            efi: {}
+        machine:
+          type: q35
+        resources:
+          requests:
+            memory: 4Gi
+      networks:
+        - name: default
+          pod: {}
+      accessCredentials:
+        - sshPublicKey:
+            propagationMethod:
+              qemuGuestAgent:
+                users:
+                  - "Administrator"
+            source:
+              secret:
+                secretName: REPLACE-ssh-secret-name
+      volumes:
+        - dataVolume:
+            name: dvclone-0
+          name: rootdisk
+  dataVolumeTemplates:
+    - metadata:
+        name: dvclone-0
+      spec:
+        # Scenario templates use registry when windowsImageUrl starts with docker://, else http.
+        source:
+          registry:
+            url: docker://REPLACE-registry-pullspec
+        storage:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 40Gi
+          storageClassName: ocs-storagecluster-ceph-rbd
+          volumeMode: Block

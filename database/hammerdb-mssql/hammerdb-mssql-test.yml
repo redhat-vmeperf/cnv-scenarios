@@ -1,0 +1,96 @@
+{{- $PROM := .PROM -}}
+{{- $PROM_TOKEN := .PROM_TOKEN -}}
+{{- $kubeBurnerFQDN := "kube-burner.io" -}}
+{{- $testName := .testName | default "cnv-hammerdb-mssql" -}}
+{{- $nsName := .testNamespace | default "cnv-hammerdb-mssql" -}}
+{{- $vmCount := .vmCount | default 1 -}}
+{{- $vmName := "hammerdb-mssql-vm" -}}
+{{- $sshPublicKeySecretName := $vmName -}}
+{{- $jobCounterLabelKey := (list $testName "." $kubeBurnerFQDN "/counter") | join "" -}}
+{{- $jobCounterLabelValue := (list "counter-" (.counter | toString )) | join "" -}}
+{{- $testNamespacesLabelKey := (list $kubeBurnerFQDN "/test-name") | join "" -}}
+{{- $testNamespacesLabelValue := $testName -}}
+---
+global:
+  measurements:
+  - name: vmiLatency
+  - name: pvcLatency
+
+metricsEndpoints:
+- indexer:
+    type: local
+    metricsDirectory: "{{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter | toString }}"
+{{- if .esServer }}
+- endpoint: {{ .PROM }}
+  token: {{ .PROM_TOKEN }}
+  metrics: [../../config/metrics-profiles/kubevirt-metrics.yaml]
+  indexer:
+    type: elastic
+    defaultIndex: {{ .testName }}
+    esServers: [{{ .esServer }}]
+    insecureSkipVerify: true
+{{- end }}
+
+jobs:
+{{ if eq (.counter | int) 0 }}
+- name: start-fresh
+  jobType: delete
+  waitForDeletion: true
+  qps: 5
+  burst: 10
+  objects:
+  - kind: Namespace
+    labelSelector:
+      {{ $testNamespacesLabelKey }}: {{ $testNamespacesLabelValue }}
+{{ end }}
+
+- name: hammerdb-mssql-test
+  jobType: create
+  jobIterations: 1
+  qps: 5
+  burst: 10
+  namespacedIterations: false
+  namespace: {{ $nsName }}
+  namespaceLabels:
+    {{ $testNamespacesLabelKey }}: {{ $testNamespacesLabelValue }}
+  verifyObjects: true
+  errorOnVerify: true
+  jobIterationDelay: 30s
+  waitWhenFinished: false
+  podWait: true
+  maxWaitTimeout: {{ .maxWaitTimeout | default "60m" }}
+  jobPause: {{ .jobPause | default "5m" }}
+  cleanup: false
+  defaultMissingKeysWithZero: true
+  beforeCleanup: '../../config/scripts/wrapper.sh check_windows_vm {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ .privateKey }} {{ .vmUser }} validateOS={{ .validateOS | default true }} expectedOS={{ .expectedOS | default "Windows" | replace " " "_" }} validateSSH={{ .validateSSH | default true }} validateApps={{ .validateApps | default "" }} validateCPU={{ .validateCPU | default true }} cpuCores={{ .cpuCores | default 8 }} validateMemory={{ .validateMemory | default true }} memory={{ .memory | default "16Gi" }} validateNICs={{ .validateNICs | default true }} expectedNICs={{ .expectedNICs | default 1 }} initializeDisks={{ .initializeDisks | default true }} validateDisks={{ .validateDisks | default true }} dataDisks={{ .dataDisks | default 1 }} diskSize={{ .diskSize | default "100Gi" }} validateDiskUtil={{ .validateDiskUtil | default false }} expectedDiskUtilGB={{ .expectedDiskUtilGB | default 0 }} diskUtilTolerancePct={{ .diskUtilTolerancePct | default 10 }} validateDiskUtilAfterProcess={{ .validateDiskUtilAfterProcess | default false }} waitProcessName={{ .waitProcessName | default "" }} waitProcessTimeout={{ .waitProcessTimeout | default 45 }} expectedDiskUtilAfterProcessGB={{ .expectedDiskUtilAfterProcessGB | default 0 }} fillExtraDisks={{ .fillExtraDisks | default false }} fioUrl={{ .fioUrl | default "https://github.com/axboe/fio/releases/download/fio-3.38/fio-3.38-x64.msi" }} fioSha256={{ .fioSha256 | default "" }} allowUnpinnedFioInstall={{ .allowUnpinnedFioInstall | default false }} dirCount={{ .dirCount | default 5 }} filesPerDir={{ .filesPerDir | default 10 }} fileSize={{ .fileSize | default "1G" }} depthCount={{ .depthCount | default 1 }} fioTimeout={{ .fioTimeout | default 30 }} expectedExtraDiskCapacityGB={{ .expectedExtraDiskCapacityGB | default 0 }} expectedTotalDiskUtilGB={{ .expectedTotalDiskUtilGB | default 0 }} disableHammerdbSchedTaskAfterValidation={{ .disableHammerdbSchedTaskAfterValidation | default true }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}'
+  objects:
+  - objectTemplate: templates/secret_ssh_public.yml
+    runOnce: true
+    replicas: 1
+    inputVars:
+      name: {{ $sshPublicKeySecretName }}
+      counter: {{ .counter | toString }}
+      publicKey: {{ .publicKey }}
+  - objectTemplate: vm-hammerdb-mssql-template.yml
+    replicas: {{ $vmCount }}
+    waitOptions:
+      labelSelector:
+        {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}
+    inputVars:
+      name: {{ $vmName }}
+      counter: {{ .counter | toString }}
+      OS: windows
+      registryUrl: "{{ .windowsImageUrl }}"
+      cpuCores: {{ .cpuCores | default 8 }}
+      memory: {{ .memory | default "16Gi" }}
+      rootStorage: {{ .rootStorage | default "100Gi" }}
+      dataDisks: {{ .dataDisks | default 1 }}
+      diskSize: {{ .diskSize | default "100Gi" }}
+      storageclass: {{ .storageClassName | default "ocs-storagecluster-ceph-rbd" }}
+      volumemode: {{ .volumeMode | default "Block" }}
+      VMIrunning: {{ .vmRunning | default true }}
+      nodeSelector: {{ .nodeSelector | default "" }}
+      vmUser: {{ .vmUser | default "Administrator" }}
+      sshPublicKeySecret: {{ $sshPublicKeySecretName }}
+      vmLabels:
+        {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}

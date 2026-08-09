@@ -1,0 +1,237 @@
+# HammerDB / MSSQL on Windows — see docs/windows-image-build.md
+#
+# These variables are the single source of truth for both VM provisioning (via
+# Go template expansion in hammerdb-mssql-test.yml / vm-hammerdb-mssql-template.yml)
+# and post-run validation (passed as key=value args to check_windows_vm in
+# config/scripts/check.sh). Changing a value here affects both the VM shape
+# that kube-burner creates and the assertions the validator enforces.
+
+# ─── Test Identity ──────────────────────────────────────────────────────────
+
+# Kubernetes namespace where VMs are created.
+testNamespace: "cnv-hammerdb-mssql"
+
+# Logical name used for kube-burner labels and results directory naming.
+testName: "cnv-hammerdb-mssql"
+
+# Root directory for kube-burner result artefacts.
+# Each run is written to <resultsPath>/<runTimestamp>/iteration-<counter>/.
+resultsPath: "/tmp/kube-burner-results/hammerdb-mssql"
+
+# Overridden at runtime by run-workloads.sh (e.g. "run-20260429-121935").
+# Do not edit manually.
+runTimestamp: "run-default"
+
+# ─── Workload Scale ─────────────────────────────────────────────────────────
+
+# Number of VMs to provision in a single test iteration.
+vmCount: 1
+
+# Iteration counter. Set counter=0 to trigger a cleanup-only run (no VM creation).
+counter: 1
+
+# Whether each VM should be started after creation. Set false to provision only.
+vmRunning: true
+
+# ─── VM Shape ───────────────────────────────────────────────────────────────
+# These values are passed directly to vm-hammerdb-mssql-template.yml via
+# inputVars. They also serve as the expected values for validation phases
+# cpu_check, memory_check, disk_check — so keep them consistent with the
+# actual workload requirements.
+
+# vCPU count allocated to each VM.
+cpuCores: 8
+
+# RAM allocated to each VM. Must match a valid KubeVirt memory string (e.g. "16Gi").
+memory: "16Gi"
+
+# Size of the root (OS) DataVolume. Must be large enough for Windows + MSSQL.
+rootStorage: "100Gi"
+
+# Number of additional data DataVolumes attached to each VM (excludes root disk).
+# Each disk is provisioned as a blank Block-mode PVC and initialized inside the
+# guest by the initializeDisks validation phase (GPT + NTFS).
+dataDisks: 3
+
+# Size of each individual data disk. Total expected data storage = dataDisks × diskSize.
+diskSize: "100Gi"
+
+# StorageClass used for all DataVolumes (root and data).
+storageClassName: "ocs-storagecluster-ceph-rbd"
+
+# PVC volume mode. "Block" is required for Windows virtio disks with CDI import.
+volumeMode: "Block"
+
+# ─── Windows Image ──────────────────────────────────────────────────────────
+
+# REQUIRED: CDI source URL for the Windows + MSSQL + HammerDB container disk.
+# Use "docker://registry/image:tag" for container registries or
+# "http(s)://host/path.qcow2" for HTTP import. See docs/windows-image-build.md.
+windowsImageUrl: "pvc://openshift-virtualization-os-images/windows-golden"
+
+# ─── Access Credentials ─────────────────────────────────────────────────────
+
+# Path to the SSH private key on the node running kube-burner.
+# Must correspond to a public key injected into the Windows guest via
+# KubeVirt accessCredentials + qemuGuestAgent propagation.
+privateKey: '/home/kni/.ssh/id_rsa'
+
+# Matching public key. Used to create the SSH secret applied to the VM.
+publicKey: '/home/kni/.ssh/id_rsa.pub'
+
+# Guest OS username. Must match the user configured in the Windows image.
+vmUser: 'Administrator'
+
+# ─── Timing ─────────────────────────────────────────────────────────────────
+
+# Maximum time kube-burner waits for VMs to reach Running state before failing.
+maxWaitTimeout: "60m"
+
+# Pause between the create job and the validation/cleanup job, giving the guest
+# time to fully boot and for MSSQL/HammerDB to start.
+jobPause: "5m"
+
+# Optional node affinity label (e.g. "kubernetes.io/hostname=worker-0").
+# Leave empty to let the scheduler place VMs freely.
+nodeSelector: ""
+
+# ─── Validation Configuration ───────────────────────────────────────────────
+# Each toggle enables or disables a phase in check_windows_vm (config/scripts/check.sh).
+# Phases run in order (1–12). Skipped phases always report PASS so they do not
+# block the overall result.
+
+# [Phase 2] Verify the guest OS caption contains expectedOS as a substring.
+validateOS: true
+# Pattern matched against Win32_OperatingSystem.Caption (case-insensitive substring).
+expectedOS: "Windows Server 2022"
+
+# [Phase 1] Verify virtctl SSH can connect to the guest before running any other phase.
+validateSSH: true
+
+# [Phase 3] Comma-separated list of Windows service names to verify are Running.
+# Leave empty ("") to skip application checks.
+validateApps: "MSSQLSERVER"
+
+# [Phase 4] Verify the guest reports the expected number of logical CPUs.
+# Uses the cpuCores value from the VM Shape section above.
+validateCPU: true
+
+# [Phase 5] Verify guest RAM is within 5% of the expected value.
+# Uses the memory value from the VM Shape section above.
+validateMemory: true
+
+# [Phase 6] Verify the number of Up NICs with an IPv4 address matches expectedNICs.
+validateNICs: true
+# Expected count of active NICs (masquerade interface = 1 for standard single-NIC VMs).
+expectedNICs: 1
+
+# [Phase 7] Action phase: bring offline/RAW data disks online, partition (GPT),
+# and format (NTFS) over SSH. Idempotent — only touches disks that need it.
+# Required before validateDisks or validateDiskUtil can run reliably.
+initializeDisks: true
+
+# [Phase 8] Verify data disk count and total size match dataDisks × diskSize.
+validateDisks: true
+
+# [Phase 9] Verify used space on non-C: fixed volumes against expectedDiskUtilGB.
+# Set expectedDiskUtilGB=0 to enable report-only mode: utilization is logged but
+# no assertion is made. Set a non-zero value to enforce a target ±diskUtilTolerancePct.
+# This is measured BEFORE HammerDB exits — it captures MSSQL data written so far.
+# Observed value: ~48GB for TPC-C with 8 cores / 16Gi RAM.
+# Leave at 0 (report-only) because exact mid-run data size is workload-dependent.
+validateDiskUtil: true
+expectedDiskUtilGB: 0
+# Percentage tolerance applied to all disk utilization assertions (phases 9, 10, 12).
+# Minimum enforced floor is 5GB to account for filesystem metadata variance.
+# Example: expectedTotalDiskUtilGB=148, diskUtilTolerancePct=30 → ±44GB window.
+diskUtilTolerancePct: 30
+
+# [Phase 10] After waitProcessName exits, verify disk utilization matches
+# expectedDiskUtilAfterProcessGB ±diskUtilTolerancePct%.
+# Captures HammerDB's final MSSQL data size on D: (plus any prior FIO data on E:/F:).
+# Set to 0 for report-only mode (recommended). On retries, FIO data from Phase 11
+# inflates this measurement, making a fixed target unreliable across runs.
+# Phase 12 provides the aggregate assertion after all data generation completes.
+# Observed value: ~48GB for a fresh run (HammerDB only on D:).
+validateDiskUtilAfterProcess: true
+# Name of the Windows process (Get-Process) or scheduled task to wait for.
+# Polling interval is 30s; maximum wait = waitProcessTimeout minutes.
+waitProcessName: "hammerdb"
+# Maximum minutes to wait for the process to exit before failing phase 10.
+waitProcessTimeout: 45
+# Expected disk utilization (GB) after the process exits.
+# 0 = report-only (recommended — see note above).
+expectedDiskUtilAfterProcessGB: 0
+
+# [Phase 13] After all validation phases complete, disable any Windows Scheduled
+# Task whose name matches *<waitProcessName>* (e.g. "run_hammerdb") so HammerDB
+# does not auto-start again on subsequent VM reboots. Requires ssh_ok and a
+# non-empty waitProcessName. Default true. Set false to leave the task enabled
+# so HammerDB reruns on every reboot.
+disableHammerdbSchedTaskAfterValidation: true
+
+# ─── FIO Data Generation on Extra Disks (Phase 11) ──────────────────────────
+# After HammerDB completes on D:, generate high-entropy data on all non-C:/D:
+# extra disks using FIO. Defeats storage-level compression/dedup on Ceph-backed
+# PVCs. See docs/windows-image-build.md for FIO deployment details.
+
+# Enable FIO-based data generation on non-C:/D: extra disks after HammerDB completes.
+fillExtraDisks: true
+
+# FIO download URL. Used only when fio.exe is not already installed in the image.
+# Default: GitHub releases (pinned to 3.38). Override to an internal HTTP server
+# for air-gapped environments.
+fioUrl: "https://github.com/axboe/fio/releases/download/fio-3.38/fio-3.38-x64.msi"
+
+# Expected SHA-256 of the MSI at fioUrl. Leave empty when fioUrl is left at its
+# default -- check.sh auto-applies the known-good hash for that exact URL. If you
+# override fioUrl, set this to the matching hash, or the install is blocked
+# (fail-closed) unless allowUnpinnedFioInstall is also set to true.
+fioSha256: ""
+
+# Allow installing an unverified FIO MSI when fioSha256 is empty and fioUrl is
+# not the pinned default. Defaults to false (fail-closed). Only set true for a
+# custom fioUrl you already trust.
+allowUnpinnedFioInstall: false
+
+# Directory structure per extra disk:
+#   Each disk gets dirCount directories, each containing filesPerDir files of
+#   fileSize each. Per-disk total = dirCount × filesPerDir × fileSize.
+#   Example: 5 × 10 × 1G = 50 GB per disk.
+dirCount: 5
+filesPerDir: 10
+fileSize: "1G"
+
+# Directory depth for FIO filename_format tree. 1 = flat dirs.
+depthCount: 1
+
+# Maximum time (minutes) to wait for FIO data generation to complete.
+# Increase for large disks or slow storage backends.
+fioTimeout: 30
+
+# [Phase 11] Expected FIO-written capacity (GB) across ALL extra disks.
+# Formula: (dataDisks - 1) × dirCount × filesPerDir × fileSize(GB)
+# Example: (3 - 1) × 5 × 10 × 1GB = 100GB
+# 0 = report-only mode (logs utilization without asserting).
+expectedExtraDiskCapacityGB: 100
+
+# [Phase 12] Expected TOTAL disk utilization (GB) across ALL non-C: drives after
+# both HammerDB (D:) and FIO (E:, F:, …) complete.
+# Formula: HammerDB_data + FIO_data = ~48GB + (dataDisks-1)×dirCount×filesPerDir×fileSize
+# Example: 48 + 100 = 148GB (with diskUtilTolerancePct=30 → ±44GB window: 104–192GB)
+# Asserts measured total is within diskUtilTolerancePct of this value.
+# 0 = report-only (logs total without asserting).
+expectedTotalDiskUtilGB: 148
+
+# ─── Observability ──────────────────────────────────────────────────────────
+
+# Elasticsearch server URL for result indexing. Leave empty to skip indexing.
+esServer: ""
+
+# Elasticsearch index name for test metadata documents.
+metadataIndex: "cnv-metadata"
+
+# Prometheus endpoint and bearer token for metrics collection during the test.
+# Leave both empty to skip metrics collection.
+PROM: ""
+PROM_TOKEN: ""

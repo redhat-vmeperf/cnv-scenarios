@@ -28,8 +28,9 @@ spec:
             secret:
               secretName: "{{ .sshPublicKeySecret }}-{{ .counter }}"
       {{- if .nodeSelector }}
+      {{- $nsParts := splitList "=" .nodeSelector }}
       nodeSelector:
-        {{ .nodeSelector }}
+        {{ index $nsParts 0 | quote }}: {{ index $nsParts 1 | quote }}
       {{- end }}
       domain:
         cpu:

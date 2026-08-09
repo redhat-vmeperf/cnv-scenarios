@@ -11,7 +11,7 @@ runTimestamp: "run-default"  # Will be set by run-sanity-tests.sh
 vmCount: 1
 
 # Memory Configuration (minimal)
-memorySize: "512Mi"
+memorySize: "2Gi"
 
 # Resource Configuration (minimal)
 cpuCores: 1
@@ -19,11 +19,15 @@ storage: "10Gi"
 
 # Storage Configuration
 storageClassName: "ocs-storagecluster-ceph-rbd"
-volumeMode: "Filesystem"
+volumeMode: "Block"
+
+guestOS: linux
+windowsImageUrl: "pvc://openshift-virtualization-os-images/windows-golden"
+windowsRootDiskSize: "100Gi"
 
 # VM Image Configuration
-imageUrl: "https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-42-1.1.x86_64.qcow2"
-baseImage: "quay.io/containerdisks/fedora:41"
+imageUrl: "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2"
+baseImage: "quay.io/containerdisks/fedora:44"
 
 # SSH Configuration
 privateKey: '/home/kni/.ssh/id_rsa'

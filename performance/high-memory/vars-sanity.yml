@@ -15,7 +15,7 @@ vmName: "high-memory-vm"
 cpuCores: 1
 
 # Memory Configuration (minimal high memory for sanity)
-highMemory: "1Gi"
+highMemory: "2Gi"
 
 # Storage Configuration (minimal)
 storage: "10Gi"
@@ -23,8 +23,13 @@ storageClassName: "ocs-storagecluster-ceph-rbd"
 volumeMode: "Filesystem"
 
 # VM Image Configuration
-baseImage: "quay.io/containerdisks/fedora:41"
+baseImage: "quay.io/containerdisks/fedora:44"
 osType: "fedora"
+
+# Guest OS Configuration (Linux or Windows)
+guestOS: "linux"
+windowsImageUrl: "pvc://openshift-virtualization-os-images/windows-golden"
+windowsRootDiskSize: "100Gi"
 
 # SSH Configuration
 privateKey: '/home/kni/.ssh/id_rsa'

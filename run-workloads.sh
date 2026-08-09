@@ -45,6 +45,7 @@ declare -A TEST_REGISTRY=(
     ["high-memory"]="performance/high-memory:high-memory-performance.yml:yml"
     ["per-host-density"]="scale-testing/per-host-density:per-host-density.yml:yml"
     ["virt-capacity-benchmark"]="scale-testing/virt-capacity-benchmark:virt-capacity-benchmark.yml:yml"
+    ["hammerdb-mssql"]="database/hammerdb-mssql:hammerdb-mssql-test.yml:yml"
 )
 
 # Ordered list for --all execution
@@ -53,6 +54,7 @@ TEST_ORDER=(
     "memory-limits"
     "disk-limits"
     "disk-hotplug"
+    "hammerdb-mssql"
     "nic-hotplug"
     "minimal-resources"
     "large-disk"
@@ -61,9 +63,25 @@ TEST_ORDER=(
     "virt-capacity-benchmark"
 )
 
+# OS support matrix: which guest OSes each test supports
+declare -A TEST_OS_SUPPORT=(
+    ["cpu-limits"]="both"
+    ["memory-limits"]="both"
+    ["disk-limits"]="both"
+    ["disk-hotplug"]="both"
+    ["high-memory"]="both"
+    ["large-disk"]="both"
+    ["nic-hotplug"]="both"
+    ["per-host-density"]="both"
+    ["hammerdb-mssql"]="windows"
+    ["minimal-resources"]="linux"
+    ["virt-capacity-benchmark"]="linux"
+)
+
 # Default settings
 MODE="full"                    # sanity or full
 EXECUTION="sequential"         # sequential or parallel
+OS_FLAG="linux"                # linux, windows, or both
 KUBE_BURNER_ARGS=()           # Additional args to pass to kube-burner
 
 # Main log file (initialized in main)
@@ -220,6 +238,57 @@ get_validation_info() {
 }
 
 # =============================================================================
+# OS-QUALIFIED TEST EXPANSION
+# =============================================================================
+
+# Expand a list of test names into OS-qualified "test_name:os" entries based on
+# OS_FLAG and each test's OS support. Incompatible tests are skipped with a warning.
+# Usage: expand_tests_for_os result_array_name test1 test2 ...
+expand_tests_for_os() {
+    local -n _result_arr="$1"
+    shift
+    local tests=("$@")
+    _result_arr=()
+
+    for test_name in "${tests[@]}"; do
+        local support="${TEST_OS_SUPPORT[$test_name]:-linux}"
+
+        case "$OS_FLAG" in
+            linux)
+                if [[ "$support" == "windows" ]]; then
+                    logmain WARN "[$test_name] Skipped: Windows-only test incompatible with --os linux"
+                    continue
+                fi
+                _result_arr+=("${test_name}:linux")
+                ;;
+            windows)
+                if [[ "$support" == "linux" ]]; then
+                    logmain WARN "[$test_name] Skipped: Linux-only test incompatible with --os windows"
+                    continue
+                fi
+                _result_arr+=("${test_name}:windows")
+                ;;
+            both)
+                case "$support" in
+                    both)
+                        _result_arr+=("${test_name}:linux")
+                        _result_arr+=("${test_name}:windows")
+                        ;;
+                    linux)
+                        _result_arr+=("${test_name}:linux")
+                        logmain INFO "[$test_name] Linux-only — running once (no Windows support)"
+                        ;;
+                    windows)
+                        _result_arr+=("${test_name}:windows")
+                        logmain INFO "[$test_name] Windows-only — running once (no Linux support)"
+                        ;;
+                esac
+                ;;
+        esac
+    done
+}
+
+# =============================================================================
 # TEST-SPECIFIC SETUP FUNCTIONS
 # =============================================================================
 
@@ -241,7 +310,9 @@ setup_per_host_density() {
             --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -1)
         if [[ -n "$first_worker" ]]; then
             export targetNode="$first_worker"
+            sed -i "s#^targetNode:.*#targetNode: \"${first_worker}\"#" "$vars_file"
             logmain INFO "[per-host-density] Auto-selected targetNode: $targetNode"
+            logmain DEBUG "[per-host-density] Wrote targetNode=${first_worker} to vars file"
         fi
     fi
     
@@ -427,10 +498,13 @@ run_cleanup() {
 # =============================================================================
 
 # Run a single test
+# Args: $1 = test_name, $2 = target_os (linux|windows), remaining = extra kube-burner args
 run_single_test() {
     local test_name="$1"
-    shift
+    local target_os="${2:-linux}"
+    shift 2 2>/dev/null || shift
     local extra_args=("$@")
+    local qualified_name="${test_name}:${target_os}"
     
     # Validate test exists
     if [[ -z "${TEST_REGISTRY[$test_name]}" ]]; then
@@ -462,7 +536,7 @@ run_single_test() {
     fi
     
     # Generate timestamp for this test run
-    local run_timestamp="run-$(date +%Y%m%d-%H%M%S)"
+    local run_timestamp="run-${target_os}-$(date +%Y%m%d-%H%M%S)"
     export runTimestamp="$run_timestamp"
     
     # Create results directory
@@ -486,32 +560,186 @@ run_single_test() {
     if [[ -n "${esServer:-}" ]]; then
         sed -i "s#^esServer:.*#esServer: \"${esServer}\"#" "$temp_vars"
     fi
+    # Generic env var injection: for every top-level key in the vars file, check if
+    # a matching environment variable is set and write its value into the temp file.
+    # This makes the "pass any var via env" promise in the usage comment actually work.
+    local _key
+    while IFS='' read -r _line; do
+        [[ "$_line" =~ ^([a-zA-Z][a-zA-Z0-9_]*): ]] || continue
+        _key="${BASH_REMATCH[1]}"
+        # Skip keys already handled specifically above, and runtime-computed keys
+        case "$_key" in PROM|PROM_TOKEN|esServer|resultsPath|runTimestamp) continue ;; esac
+        local _val="${!_key}"
+        [[ -z "$_val" ]] && continue
+        local _escaped_val="${_val//\\/\\\\}"
+        _escaped_val="${_escaped_val//&/\\&}"
+        _escaped_val="${_escaped_val//#/\\#}"
+        sed -i "s#^${_key}:.*#${_key}: \"${_escaped_val}\"#" "$temp_vars"
+    done < "$temp_vars"
 
-    logmain INFO "[$test_name] Starting test"
-    logmain INFO "[$test_name] Mode: $MODE"
-    logmain INFO "[$test_name] Config: $config_file"
-    logmain INFO "[$test_name] Vars: $temp_vars"
-    logmain INFO "[$test_name] Results: $results_path"
+    # Inject guestOS from --os flag (authoritative override of env var or vars file)
+    if grep -q "^guestOS:" "$temp_vars" 2>/dev/null; then
+        sed -i "s#^guestOS:.*#guestOS: \"${target_os}\"#" "$temp_vars"
+    else
+        echo "guestOS: \"${target_os}\"" >> "$temp_vars"
+    fi
+
+    # When running --os both, namespace prefixes must be OS-qualified to avoid collision.
+    # Append -<os> to testNamespacePrefix so Linux and Windows land in separate namespaces.
+    if [[ "$OS_FLAG" == "both" ]]; then
+        if grep -q "^testNamespacePrefix:" "$temp_vars" 2>/dev/null; then
+            local _current_prefix
+            _current_prefix=$(grep "^testNamespacePrefix:" "$temp_vars" | head -1 | awk '{print $2}' | tr -d "\"'")
+            sed -i "s#^testNamespacePrefix:.*#testNamespacePrefix: \"${_current_prefix}-${target_os}\"#" "$temp_vars"
+            logmain DEBUG "[$qualified_name] Qualified testNamespacePrefix to ${_current_prefix}-${target_os} for --os both"
+        fi
+        if grep -q "^testNamespace:" "$temp_vars" 2>/dev/null; then
+            local _current_ns
+            _current_ns=$(grep "^testNamespace:" "$temp_vars" | head -1 | awk '{print $2}' | tr -d "\"'")
+            sed -i "s#^testNamespace:.*#testNamespace: \"${_current_ns}-${target_os}\"#" "$temp_vars"
+            logmain DEBUG "[$qualified_name] Qualified testNamespace to ${_current_ns}-${target_os} for --os both"
+        fi
+    fi
+
+    # Auto-correct vmUser when guestOS is switched to windows but vmUser was not
+    # explicitly overridden (Linux defaults like 'fedora'/'cloud-user' won't work).
+    # Fallback-only: skip the write if the vars file already set it to Administrator
+    # (e.g. hammerdb-mssql), so this never clobbers an already-correct explicit value.
+    local _effective_guest_os
+    _effective_guest_os=$(grep "^guestOS:" "$temp_vars" 2>/dev/null | awk '{print $2}' | tr -d '"' | tr -d "'")
+    if [[ "$_effective_guest_os" == "windows" && -z "${vmUser:-}" ]]; then
+        local _current_vmuser
+        _current_vmuser=$(grep "^vmUser:" "$temp_vars" 2>/dev/null | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
+        if [[ "$_current_vmuser" != "Administrator" ]]; then
+            sed -i "s#^vmUser:.*#vmUser: \"Administrator\"#" "$temp_vars"
+            logmain DEBUG "[$qualified_name] Auto-set vmUser=Administrator for guestOS=windows"
+        fi
+    fi
+
+    # Auto-set Windows-appropriate maxWaitTimeout (CDI import + boot takes longer).
+    # Fallback-only: this is a 30m *floor*, not a fixed overwrite, so a scenario's own
+    # larger tuned value (e.g. hammerdb-mssql's 60m, large-disk's 120m) is never
+    # silently downgraded -- only values below the floor get bumped up.
+    if [[ "$_effective_guest_os" == "windows" && -z "${maxWaitTimeout:-}" ]]; then
+        if grep -q "^maxWaitTimeout:" "$temp_vars" 2>/dev/null; then
+            local _current_wait
+            _current_wait=$(grep "^maxWaitTimeout:" "$temp_vars" | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
+            local _wait_num=${_current_wait//[!0-9]/}
+            local _wait_unit=${_current_wait//[0-9]/}
+            local _wait_minutes="${_wait_num:-0}"
+            [[ "$_wait_unit" == "h" ]] && _wait_minutes=$((_wait_num * 60))
+            if [[ -z "$_wait_num" || "$_wait_minutes" -lt 30 ]]; then
+                sed -i "s#^maxWaitTimeout:.*#maxWaitTimeout: \"30m\"#" "$temp_vars"
+                logmain DEBUG "[$qualified_name] Auto-increased maxWaitTimeout to 30m floor for guestOS=windows (was ${_current_wait})"
+            fi
+        else
+            echo 'maxWaitTimeout: "30m"' >> "$temp_vars"
+            logmain DEBUG "[$qualified_name] Auto-set maxWaitTimeout=30m for guestOS=windows"
+        fi
+    fi
+
+    # Auto-set windowsRootDiskSize when not present (Windows images need >=90Gi).
+    if [[ "$_effective_guest_os" == "windows" && -z "${windowsRootDiskSize:-}" ]]; then
+        if ! grep -q "^windowsRootDiskSize:" "$temp_vars" 2>/dev/null; then
+            echo 'windowsRootDiskSize: "90Gi"' >> "$temp_vars"
+            logmain DEBUG "[$qualified_name] Auto-set windowsRootDiskSize=90Gi for guestOS=windows"
+        fi
+    fi
+
+    # Auto-increase SSH retries for Windows (OpenSSH takes longer to start).
+    # Fallback-only: 20 is a floor, not a fixed overwrite, so a scenario's own larger
+    # tuned value (e.g. per-host-density full mode's 240) is never silently downgraded.
+    if [[ "$_effective_guest_os" == "windows" && -z "${max_ssh_retries:-}" ]]; then
+        if grep -q "^max_ssh_retries:" "$temp_vars" 2>/dev/null; then
+            local _current_retries
+            _current_retries=$(grep "^max_ssh_retries:" "$temp_vars" | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
+            if [[ -z "$_current_retries" || "$_current_retries" -lt 20 ]]; then
+                sed -i "s#^max_ssh_retries:.*#max_ssh_retries: 20#" "$temp_vars"
+                logmain DEBUG "[$qualified_name] Auto-increased max_ssh_retries to 20 floor for guestOS=windows (was ${_current_retries})"
+            fi
+        else
+            echo 'max_ssh_retries: 20' >> "$temp_vars"
+            logmain DEBUG "[$qualified_name] Auto-set max_ssh_retries=20 for guestOS=windows"
+        fi
+    fi
+
+    # Auto-increase VM memory for Windows (minimum 2Gi; Linux-sized values cause boot failures).
+    if [[ "$_effective_guest_os" == "windows" && -z "${vmMemory:-}" ]]; then
+        local _current_mem
+        _current_mem=$(grep "^vmMemory:" "$temp_vars" 2>/dev/null | awk '{print $2}' | tr -d '"' | tr -d "'")
+        if [[ -n "$_current_mem" ]]; then
+            local _mem_val=${_current_mem//[!0-9]/}
+            local _mem_unit=${_current_mem//[0-9]/}
+            if [[ "$_mem_unit" == "Mi" && "$_mem_val" -lt 2048 ]] || \
+               [[ "$_mem_unit" == "M" && "$_mem_val" -lt 2048 ]] || \
+               [[ "$_mem_unit" == "Gi" && "$_mem_val" -lt 2 ]] || \
+               [[ "$_mem_unit" == "G" && "$_mem_val" -lt 2 ]]; then
+                sed -i "s#^vmMemory:.*#vmMemory: \"2Gi\"#" "$temp_vars"
+                logmain DEBUG "[$qualified_name] Auto-increased vmMemory from ${_current_mem} to 2Gi for guestOS=windows"
+            fi
+        fi
+    fi
+    if [[ "$_effective_guest_os" == "windows" && -z "${memory:-}" ]]; then
+        local _current_mem
+        _current_mem=$(grep "^memory:" "$temp_vars" 2>/dev/null | awk '{print $2}' | tr -d '"' | tr -d "'")
+        if [[ -n "$_current_mem" ]]; then
+            local _mem_val=${_current_mem//[!0-9]/}
+            local _mem_unit=${_current_mem//[0-9]/}
+            if [[ "$_mem_unit" == "Mi" && "$_mem_val" -lt 2048 ]] || \
+               [[ "$_mem_unit" == "M" && "$_mem_val" -lt 2048 ]] || \
+               [[ "$_mem_unit" == "Gi" && "$_mem_val" -lt 2 ]] || \
+               [[ "$_mem_unit" == "G" && "$_mem_val" -lt 2 ]]; then
+                sed -i "s#^memory:.*#memory: \"2Gi\"#" "$temp_vars"
+                logmain DEBUG "[$qualified_name] Auto-increased memory from ${_current_mem} to 2Gi for guestOS=windows"
+            fi
+        fi
+    fi
+
+    # Auto-clamp cpuSockets/cpuMaxSockets to 64 for Windows (Windows Server 2022 caps
+    # out around 64 sockets; the full profile's 512 causes a 2h boot timeout). Leaves
+    # sanity mode's cpuSockets=1 untouched since it's already below the clamp.
+    if [[ "$_effective_guest_os" == "windows" && -z "${cpuSockets:-}" ]]; then
+        local _current_sockets
+        _current_sockets=$(grep "^cpuSockets:" "$temp_vars" 2>/dev/null | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
+        if [[ -n "$_current_sockets" && "$_current_sockets" -gt 64 ]]; then
+            sed -i "s#^cpuSockets:.*#cpuSockets: 64#" "$temp_vars"
+            logmain DEBUG "[$qualified_name] Auto-clamped cpuSockets from ${_current_sockets} to 64 for guestOS=windows"
+        fi
+    fi
+    if [[ "$_effective_guest_os" == "windows" && -z "${cpuMaxSockets:-}" ]]; then
+        local _current_max_sockets
+        _current_max_sockets=$(grep "^cpuMaxSockets:" "$temp_vars" 2>/dev/null | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
+        if [[ -n "$_current_max_sockets" && "$_current_max_sockets" -gt 64 ]]; then
+            sed -i "s#^cpuMaxSockets:.*#cpuMaxSockets: 64#" "$temp_vars"
+            logmain DEBUG "[$qualified_name] Auto-clamped cpuMaxSockets from ${_current_max_sockets} to 64 for guestOS=windows"
+        fi
+    fi
+
+    logmain INFO "[$qualified_name] Starting test"
+    logmain INFO "[$qualified_name] Mode: $MODE | OS: $target_os"
+    logmain INFO "[$qualified_name] Config: $config_file"
+    logmain INFO "[$qualified_name] Vars: $temp_vars"
+    logmain INFO "[$qualified_name] Results: $results_path"
     
     local start_time=$(date +%s)
     
     # Print test header
     log ""
     log "=============================================="
-    log "  ${test_name} Test"
+    log "  ${test_name} Test (${target_os})"
     log "=============================================="
     log "Timestamp: ${run_timestamp}"
-    log "Mode: ${MODE}"
+    log "Mode: ${MODE} | OS: ${target_os}"
     log "Results: ${results_path}/"
     
     # Run test-specific setup (pass temp_vars for reading config values)
     if ! run_setup "$test_name" "$temp_vars"; then
-        logerr "[$test_name] Setup failed"
-        TEST_RESULTS[$test_name]=1
-        TEST_DURATIONS[$test_name]=0
-        TEST_PATHS[$test_name]="$results_path"
-        TEST_VALIDATIONS[$test_name]="SETUP_FAILED"
-        TEST_VAL_FILES[$test_name]=""
+        logerr "[$qualified_name] Setup failed"
+        TEST_RESULTS[$qualified_name]=1
+        TEST_DURATIONS[$qualified_name]=0
+        TEST_PATHS[$qualified_name]="$results_path"
+        TEST_VALIDATIONS[$qualified_name]="SETUP_FAILED"
+        TEST_VAL_FILES[$qualified_name]=""
         return 1
     fi
     
@@ -539,7 +767,7 @@ run_single_test() {
                 mv "$log_file" "${results_path}/" 2>/dev/null || true
             fi
         done
-        logmain INFO "[$test_name] Moved kube-burner UUID logs to results directory"
+        logmain INFO "[$qualified_name] Moved kube-burner UUID logs to results directory"
     fi
     
     local end_time=$(date +%s)
@@ -562,7 +790,7 @@ run_single_test() {
         local test_name_var=$(get_yaml_value "testName" "$temp_vars" "$test_name")
         local metadata_index=$(get_yaml_value "metadataIndex" "$temp_vars" "cnv-metadata")
         
-        logmain INFO "[$test_name] Collecting metadata (UUID: ${kb_uuid})"
+        logmain INFO "[$qualified_name] Collecting metadata (UUID: ${kb_uuid})"
         if "${SCRIPT_DIR}/config/scripts/metadata-collector.sh" \
             --uuid "$kb_uuid" \
             --test-name "$test_name" \
@@ -577,27 +805,27 @@ run_single_test() {
             --metadata-index "$metadata_index" \
             ${test_name_var:+--test-index "$test_name_var"}; then
             metadata_file="${results_path}/metadata.json"
-            logmain INFO "[$test_name] Metadata collection complete"
+            logmain INFO "[$qualified_name] Metadata collection complete"
         else
-            logmain INFO "[$test_name] WARNING: Metadata collection failed (non-fatal)"
+            logmain INFO "[$qualified_name] WARNING: Metadata collection failed (non-fatal)"
         fi
 
         # Index validation reports to ES (separate cnv-validation index)
         if [[ -n "$es_server" ]]; then
-            logmain INFO "[$test_name] Indexing validation reports to ES..."
+            logmain INFO "[$qualified_name] Indexing validation reports to ES..."
             if "${SCRIPT_DIR}/config/scripts/validation-indexer.sh" \
                 --uuid "$kb_uuid" \
                 --test-name "$test_name" \
                 --results-dir "$results_path" \
                 --es-server "$es_server"; then
-                logmain INFO "[$test_name] Validation indexing complete"
+                logmain INFO "[$qualified_name] Validation indexing complete"
             else
-                logmain INFO "[$test_name] WARNING: Validation indexing failed (non-fatal)"
+                logmain INFO "[$qualified_name] WARNING: Validation indexing failed (non-fatal)"
             fi
         fi
 
         if [[ -n "$PROM" && -n "$PROM_TOKEN" ]]; then
-            logmain INFO "[$test_name] Collecting Prometheus alerts..."
+            logmain INFO "[$qualified_name] Collecting Prometheus alerts..."
             local test_start_iso=$(date -d "@$start_time" -Iseconds 2>/dev/null || date -r "$start_time" -Iseconds 2>/dev/null)
             local test_end_iso=$(date -Iseconds)
             "${SCRIPT_DIR}/config/scripts/alert-collector.sh" \
@@ -609,32 +837,32 @@ run_single_test() {
                 --prom-token "$PROM_TOKEN" \
                 --es-server "$es_server" \
                 --results-dir "$results_path" || true
-            logmain INFO "[$test_name] Alert collection complete"
+            logmain INFO "[$qualified_name] Alert collection complete"
         fi
 
         # Index kube-burner and validation logs to ES
         if [[ -n "$es_server" ]]; then
-            logmain INFO "[$test_name] Indexing execution logs to ES..."
+            logmain INFO "[$qualified_name] Indexing execution logs to ES..."
             if python3 "${SCRIPT_DIR}/config/scripts/log-indexer.py" \
                 --uuid "$kb_uuid" \
                 --test-name "$test_name" \
                 --es-server "$es_server" \
                 --results-dir "$results_path"; then
-                logmain INFO "[$test_name] Log indexing complete"
+                logmain INFO "[$qualified_name] Log indexing complete"
             else
-                logmain INFO "[$test_name] WARNING: Log indexing failed (non-fatal)"
+                logmain INFO "[$qualified_name] WARNING: Log indexing failed (non-fatal)"
             fi
         fi
     else
-        logmain INFO "[$test_name] Skipping metadata collection (no kube-burner UUID found)"
+        logmain INFO "[$qualified_name] Skipping metadata collection (no kube-burner UUID found)"
     fi
     
-    # Store results
-    TEST_RESULTS[$test_name]=$exit_code
-    TEST_DURATIONS[$test_name]=$duration
-    TEST_PATHS[$test_name]="$results_path"
-    TEST_VALIDATIONS[$test_name]="$val_status"
-    TEST_VAL_FILES[$test_name]="$val_file"
+    # Store results (keyed by qualified name for --os both disambiguation)
+    TEST_RESULTS[$qualified_name]=$exit_code
+    TEST_DURATIONS[$qualified_name]=$duration
+    TEST_PATHS[$qualified_name]="$results_path"
+    TEST_VALIDATIONS[$qualified_name]="$val_status"
+    TEST_VAL_FILES[$qualified_name]="$val_file"
     
     # Build validation_files array properly using jq
     local val_files_json=$(find "$results_path" -name "validation-*.json" -type f 2>/dev/null | \
@@ -645,6 +873,7 @@ run_single_test() {
     local summary_json="${results_path}/summary.json"
     jq -n \
       --arg test "$test_name" \
+      --arg os "$target_os" \
       --arg mode "$MODE" \
       --argjson exit_code "$exit_code" \
       --arg results_path "$results_path" \
@@ -657,6 +886,7 @@ run_single_test() {
       --arg metadata_file "${metadata_file:-}" \
       '{
         test: $test,
+        os: $os,
         mode: $mode,
         exit_code: $exit_code,
         results_path: $results_path,
@@ -676,11 +906,11 @@ run_single_test() {
     log ""
     log "=============================================="
     if [[ $exit_code -eq 0 ]]; then
-        log "✓ Test Complete - SUCCESS"
-        logmain INFO "[$test_name] Completed: exit_code=0, duration=$(format_duration $duration)"
+        log "✓ Test Complete - SUCCESS (${target_os})"
+        logmain INFO "[$qualified_name] Completed: exit_code=0, duration=$(format_duration $duration)"
     else
-        log "✗ Test Complete - FAILED (exit code: $exit_code)"
-        logmain INFO "[$test_name] Completed: exit_code=$exit_code, duration=$(format_duration $duration)"
+        log "✗ Test Complete - FAILED (${target_os}, exit code: $exit_code)"
+        logmain INFO "[$qualified_name] Completed: exit_code=$exit_code, duration=$(format_duration $duration)"
     fi
     log "=============================================="
     log ""
@@ -709,63 +939,70 @@ run_single_test() {
 # =============================================================================
 
 # Run tests sequentially
+# Args: OS-qualified entries (test_name:os)
 run_tests_sequential() {
     local tests=("$@")
     local failed=0
     
-    for test_name in "${tests[@]}"; do
-        logmain INFO "[$test_name] Queued for sequential execution"
+    for entry in "${tests[@]}"; do
+        logmain INFO "[$entry] Queued for sequential execution"
     done
     
-    for test_name in "${tests[@]}"; do
-        run_single_test "$test_name" || ((failed++)) || true
+    for entry in "${tests[@]}"; do
+        local test_name="${entry%%:*}"
+        local target_os="${entry##*:}"
+        run_single_test "$test_name" "$target_os" || ((failed++)) || true
     done
     
     return $failed
 }
 
 # Run tests in parallel
+# Args: OS-qualified entries (test_name:os)
 run_tests_parallel() {
     local tests=("$@")
     local pids=()
-    local pid_to_test=()
+    local pid_to_entry=()
     local parent_pid=$$
     
     # Start all tests in background
-    for test_name in "${tests[@]}"; do
-        logmain INFO "[$test_name] Starting in background"
+    for entry in "${tests[@]}"; do
+        local test_name="${entry%%:*}"
+        local target_os="${entry##*:}"
+        logmain INFO "[$entry] Starting in background"
         
         # Create a subshell for each test
         (
-            # Redirect output to test-specific log
-            local test_log="${RESULTS_BASE}/${test_name}-parallel-${parent_pid}.log"
-            run_single_test "$test_name" > "$test_log" 2>&1
+            local test_log="${RESULTS_BASE}/${test_name}-${target_os}-parallel-${parent_pid}.log"
+            run_single_test "$test_name" "$target_os" > "$test_log" 2>&1
             exit $?
         ) &
         
         local pid=$!
         pids+=($pid)
-        pid_to_test[$pid]="$test_name"
+        pid_to_entry[$pid]="$entry"
         
-        logmain INFO "[$test_name] Started with PID $pid"
+        logmain INFO "[$entry] Started with PID $pid"
     done
     
     # Wait for all tests to complete
     local failed=0
     for pid in "${pids[@]}"; do
-        local test_name="${pid_to_test[$pid]}"
-        logmain INFO "[$test_name] Waiting for PID $pid..."
+        local entry="${pid_to_entry[$pid]}"
+        local test_name="${entry%%:*}"
+        local target_os="${entry##*:}"
+        logmain INFO "[$entry] Waiting for PID $pid..."
         
         if wait $pid; then
-            logmain INFO "[$test_name] PID $pid completed successfully"
+            logmain INFO "[$entry] PID $pid completed successfully"
         else
             local exit_code=$?
-            logmain INFO "[$test_name] PID $pid failed with exit code $exit_code"
+            logmain INFO "[$entry] PID $pid failed with exit code $exit_code"
             ((failed++)) || true
         fi
         
         # Show the test output
-        local test_log="${RESULTS_BASE}/${test_name}-parallel-${parent_pid}.log"
+        local test_log="${RESULTS_BASE}/${test_name}-${target_os}-parallel-${parent_pid}.log"
         if [[ -f "$test_log" ]]; then
             cat "$test_log"
             rm -f "$test_log"
@@ -774,34 +1011,34 @@ run_tests_parallel() {
     
     # After all parallel tests complete, read results from summary.json files
     # This is needed because associative arrays set in subshells don't propagate back
-    for test_name in "${tests[@]}"; do
-        # Find the most recent run directory for this test (more robust than find | xargs)
-        local latest_run=$(ls -td "${RESULTS_BASE}/${test_name}"/run-* 2>/dev/null | head -1)
+    for entry in "${tests[@]}"; do
+        local test_name="${entry%%:*}"
+        local target_os="${entry##*:}"
+        # Match OS-qualified directory names (run-{os}-YYYYMMDD-HHMMSS)
+        local latest_run=$(ls -td "${RESULTS_BASE}/${test_name}"/run-${target_os}-* 2>/dev/null | head -1)
         local summary_file="${latest_run}/summary.json"
         
         if [[ -f "$summary_file" ]]; then
-            # Parse the summary.json and populate arrays
             local exit_code=$(jq -r '.exit_code // 999' "$summary_file" 2>/dev/null)
             local duration=$(jq -r '.duration_seconds // 0' "$summary_file" 2>/dev/null)
             local results_path=$(jq -r '.results_path // "N/A"' "$summary_file" 2>/dev/null)
             local val_status=$(jq -r '.validation_status // "N/A"' "$summary_file" 2>/dev/null)
-            # Get first validation file from array
             local val_file=$(jq -r '.validation_files[0] // ""' "$summary_file" 2>/dev/null)
             
-            TEST_RESULTS[$test_name]=$exit_code
-            TEST_DURATIONS[$test_name]=$duration
-            TEST_PATHS[$test_name]="$results_path"
-            TEST_VALIDATIONS[$test_name]="$val_status"
-            TEST_VAL_FILES[$test_name]="$val_file"
+            TEST_RESULTS[$entry]=$exit_code
+            TEST_DURATIONS[$entry]=$duration
+            TEST_PATHS[$entry]="$results_path"
+            TEST_VALIDATIONS[$entry]="$val_status"
+            TEST_VAL_FILES[$entry]="$val_file"
             
-            logmain INFO "[$test_name] Loaded results: exit=$exit_code, duration=${duration}s, validation=$val_status"
+            logmain INFO "[$entry] Loaded results: exit=$exit_code, duration=${duration}s, validation=$val_status"
         else
-            logmain INFO "[$test_name] No summary.json found at ${summary_file:-unknown}, test may have failed early"
-            TEST_RESULTS[$test_name]=999
-            TEST_DURATIONS[$test_name]=0
-            TEST_PATHS[$test_name]="N/A"
-            TEST_VALIDATIONS[$test_name]="NO_SUMMARY"
-            TEST_VAL_FILES[$test_name]=""
+            logmain INFO "[$entry] No summary.json found at ${summary_file:-unknown}, test may have failed early"
+            TEST_RESULTS[$entry]=999
+            TEST_DURATIONS[$entry]=0
+            TEST_PATHS[$entry]="N/A"
+            TEST_VALIDATIONS[$entry]="NO_SUMMARY"
+            TEST_VAL_FILES[$entry]=""
         fi
     done
     
@@ -812,29 +1049,32 @@ run_tests_parallel() {
 # SUMMARY DISPLAY
 # =============================================================================
 
+# Args: OS-qualified entries (test_name:os)
 print_summary_table() {
     local tests=("$@")
     
     echo ""
-    echo "================================================================================"
-    echo "                           VME Test Suite Summary"
-    echo "================================================================================"
-    echo "MODE: $MODE | EXECUTION: $EXECUTION | TESTS: ${#tests[@]}"
+    echo "========================================================================================="
+    echo "                              VME Test Suite Summary"
+    echo "========================================================================================="
+    echo "MODE: $MODE | EXECUTION: $EXECUTION | OS: $OS_FLAG | TESTS: ${#tests[@]}"
     echo "MAIN LOG: $MAIN_LOG"
     echo ""
     
-    printf "%-24s %-10s %-12s %-12s\n" "TEST" "STATUS" "VALIDATION" "DURATION"
-    echo "--------------------------------------------------------------------------------"
+    printf "%-24s %-10s %-10s %-12s %-12s\n" "TEST" "OS" "STATUS" "VALIDATION" "DURATION"
+    echo "-----------------------------------------------------------------------------------------"
     
     local passed=0
     local failed=0
     
-    for test_name in "${tests[@]}"; do
-        local exit_code=${TEST_RESULTS[$test_name]:-999}
-        local duration=${TEST_DURATIONS[$test_name]:-0}
-        local results_path=${TEST_PATHS[$test_name]:-"N/A"}
-        local val_status=${TEST_VALIDATIONS[$test_name]:-"N/A"}
-        local val_files=${TEST_VAL_FILES[$test_name]:-""}
+    for entry in "${tests[@]}"; do
+        local test_name="${entry%%:*}"
+        local target_os="${entry##*:}"
+        local exit_code=${TEST_RESULTS[$entry]:-999}
+        local duration=${TEST_DURATIONS[$entry]:-0}
+        local results_path=${TEST_PATHS[$entry]:-"N/A"}
+        local val_status=${TEST_VALIDATIONS[$entry]:-"N/A"}
+        local val_files=${TEST_VAL_FILES[$entry]:-""}
         
         local status="UNKNOWN"
         if [[ $exit_code -eq 0 ]]; then
@@ -849,14 +1089,12 @@ print_summary_table() {
         
         local duration_str=$(format_duration $duration)
         
-        printf "%-24s %-10s %-12s %-12s\n" "$test_name" "$status" "$val_status" "$duration_str"
+        printf "%-24s %-10s %-10s %-12s %-12s\n" "$test_name" "$target_os" "$status" "$val_status" "$duration_str"
         
-        # Print results path
         if [[ "$results_path" != "N/A" ]]; then
             echo "  Results: ${results_path}/"
         fi
         
-        # Print validation file or log file for failed tests
         if [[ -n "$val_files" && -f "$val_files" ]]; then
             echo "  Validation: $val_files"
         elif [[ "$status" == "FAIL" && -f "${results_path}/kube-burner.log" ]]; then
@@ -866,9 +1104,9 @@ print_summary_table() {
         echo ""
     done
     
-    echo "================================================================================"
+    echo "========================================================================================="
     echo "PASSED: $passed | FAILED: $failed | TOTAL: ${#tests[@]}"
-    echo "================================================================================"
+    echo "========================================================================================="
     echo ""
     echo "Main log file:"
     echo "  $MAIN_LOG"
@@ -892,10 +1130,19 @@ EXAMPLES:
     ./run-workloads.sh cpu-limits --mode sanity
     cpuCores=8 ./run-workloads.sh cpu-limits
 
+    # Windows test
+    windowsImageUrl='http://host:port/image.qcow2' ./run-workloads.sh cpu-limits --os windows
+
+    # Run both Linux and Windows variants
+    windowsImageUrl='http://host:port/image.qcow2' ./run-workloads.sh cpu-limits --os both
+
     # Multiple tests
     ./run-workloads.sh --all --mode sanity
     ./run-workloads.sh --all --mode full --parallel
     ./run-workloads.sh cpu-limits memory-limits --sequential
+
+    # All tests, both OSes
+    windowsImageUrl='...' ./run-workloads.sh --all --os both --mode sanity
 
     # List tests
     ./run-workloads.sh --list
@@ -904,6 +1151,16 @@ OPTIONS:
     --mode <sanity|full>    Select vars file (default: full)
                             sanity: uses vars-sanity.yml
                             full: uses vars.yml
+
+    --os <linux|windows|both>
+                            Select guest OS (default: linux)
+                            linux: run tests with Linux VMs
+                            windows: run tests with Windows VMs
+                            both: run each test twice (Linux then Windows)
+                            Requires windowsImageUrl env var for windows/both.
+                            Tests that don't support the selected OS are skipped.
+                            NOTE: --os both with --parallel doubles the number of
+                            concurrent tests on the cluster.
     
     --parallel              Run tests in parallel
     --sequential            Run tests sequentially (default)
@@ -927,31 +1184,35 @@ ENVIRONMENT VARIABLES:
         cpuCores=8 ./run-workloads.sh cpu-limits
         vmsPerNamespace=100 targetNode=worker001 ./run-workloads.sh per-host-density
         baseInterface=ens2f0 nicCount=20 ./run-workloads.sh nic-hotplug
+        windowsImageUrl='http://host:port/image.qcow2' ./run-workloads.sh --os windows cpu-limits
 
 AVAILABLE TESTS:
 EOF
     for test_name in "${TEST_ORDER[@]}"; do
         local entry="${TEST_REGISTRY[$test_name]}"
         local rel_dir=$(parse_registry "$entry" "dir")
-        printf "    %-24s %s\n" "$test_name" "$rel_dir"
+        local os_support="${TEST_OS_SUPPORT[$test_name]:-linux}"
+        printf "    %-24s %-10s %s\n" "$test_name" "[$os_support]" "$rel_dir"
     done
 }
 
 list_tests() {
     echo "Available VME Tests:"
     echo ""
-    printf "%-24s %-40s %-8s\n" "TEST NAME" "DIRECTORY" "VARS EXT"
-    echo "--------------------------------------------------------------------------------"
+    printf "%-24s %-12s %-40s %-8s\n" "TEST NAME" "OS SUPPORT" "DIRECTORY" "VARS EXT"
+    echo "--------------------------------------------------------------------------------------------"
     for test_name in "${TEST_ORDER[@]}"; do
         local entry="${TEST_REGISTRY[$test_name]}"
         local rel_dir=$(parse_registry "$entry" "dir")
         local ext=$(parse_registry "$entry" "ext")
-        printf "%-24s %-40s .%-7s\n" "$test_name" "$rel_dir" "$ext"
+        local os_support="${TEST_OS_SUPPORT[$test_name]:-linux}"
+        printf "%-24s %-12s %-40s .%-7s\n" "$test_name" "$os_support" "$rel_dir" "$ext"
     done
     echo ""
     echo "Run a test:"
     echo "  ./run-workloads.sh <test-name>"
     echo "  ./run-workloads.sh <test-name> --mode sanity"
+    echo "  windowsImageUrl='...' ./run-workloads.sh <test-name> --os windows"
     echo ""
 }
 
@@ -979,6 +1240,22 @@ main() {
                 MODE="${1#*=}"
                 if [[ "$MODE" != "sanity" && "$MODE" != "full" ]]; then
                     logerr "Invalid mode: $MODE (must be 'sanity' or 'full')"
+                    exit 1
+                fi
+                shift
+                ;;
+            --os)
+                OS_FLAG="$2"
+                if [[ "$OS_FLAG" != "linux" && "$OS_FLAG" != "windows" && "$OS_FLAG" != "both" ]]; then
+                    logerr "Invalid OS: $OS_FLAG (must be 'linux', 'windows', or 'both')"
+                    exit 1
+                fi
+                shift 2
+                ;;
+            --os=*)
+                OS_FLAG="${1#*=}"
+                if [[ "$OS_FLAG" != "linux" && "$OS_FLAG" != "windows" && "$OS_FLAG" != "both" ]]; then
+                    logerr "Invalid OS: $OS_FLAG (must be 'linux', 'windows', or 'both')"
                     exit 1
                 fi
                 shift
@@ -1041,6 +1318,62 @@ main() {
         logerr "Use --list to see available tests"
         exit 1
     fi
+
+    # Expand tests into OS-qualified run list (test_name:os pairs)
+    local qualified_tests=()
+    expand_tests_for_os qualified_tests "${tests_to_run[@]}"
+
+    # Validate windowsImageUrl when OS includes windows: the env var is one way to
+    # supply it, but a scenario's own vars file (e.g. hammerdb-mssql) may already set
+    # it, so only fail for tests that have neither.
+    if [[ -z "${windowsImageUrl:-}" ]]; then
+        local _missing_image_url_tests=()
+        for _qe in "${qualified_tests[@]}"; do
+            local _q_test="${_qe%%:*}"
+            local _q_os="${_qe##*:}"
+            [[ "$_q_os" == "windows" ]] || continue
+            local _q_entry="${TEST_REGISTRY[$_q_test]}"
+            local _q_rel_dir=$(parse_registry "$_q_entry" "dir")
+            local _q_ext=$(parse_registry "$_q_entry" "ext")
+            local _q_test_dir="${SCRIPT_DIR}/${_q_rel_dir}"
+            local _q_vars_file=$(get_vars_file "$_q_test_dir" "$_q_ext")
+            if ! grep -q "^windowsImageUrl:[[:space:]]*[\"']\?[^\"'[:space:]]" "$_q_vars_file" 2>/dev/null; then
+                _missing_image_url_tests+=("$_q_test")
+            fi
+        done
+        if [[ ${#_missing_image_url_tests[@]} -gt 0 ]]; then
+            logerr "windowsImageUrl not set for windows-targeted test(s): ${_missing_image_url_tests[*]}"
+            logerr "Either export windowsImageUrl, or set it directly in that scenario's vars file"
+            logerr "Example: windowsImageUrl='http://host:port/image.qcow2' ./run-workloads.sh --os $OS_FLAG ${tests_to_run[*]}"
+            exit 1
+        fi
+    fi
+
+    if [[ ${#qualified_tests[@]} -eq 0 ]]; then
+        logerr "No compatible tests for --os $OS_FLAG"
+        exit 1
+    fi
+
+    # Warn about nic-hotplug NNCP collision risk in parallel + both mode
+    if [[ "$OS_FLAG" == "both" && "$EXECUTION" == "parallel" ]]; then
+        local _nic_count=0
+        for _qe in "${qualified_tests[@]}"; do
+            [[ "${_qe%%:*}" == "nic-hotplug" ]] && ((_nic_count++)) || true
+        done
+        if [[ $_nic_count -gt 1 ]]; then
+            logmain WARN "nic-hotplug will run sequentially for linux/windows to avoid NNCP collision on the same NIC"
+            local _nic_free=()
+            local _nic_held=()
+            for _qe in "${qualified_tests[@]}"; do
+                if [[ "${_qe%%:*}" == "nic-hotplug" ]]; then
+                    _nic_held+=("$_qe")
+                else
+                    _nic_free+=("$_qe")
+                fi
+            done
+            qualified_tests=("${_nic_free[@]}" "${_nic_held[@]}")
+        fi
+    fi
     
     # Initialize main log
     MAIN_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -1049,25 +1382,48 @@ main() {
     touch "$MAIN_LOG"
     
     logmain INFO "Starting VME Test Suite"
-    logmain INFO "Mode: $MODE | Execution: $EXECUTION | Tests: ${tests_to_run[*]}"
+    logmain INFO "Mode: $MODE | Execution: $EXECUTION | OS: $OS_FLAG | Tests: ${qualified_tests[*]}"
     logmain INFO "Main log: $MAIN_LOG"
     refresh_prometheus_token
 
     # Run tests
     local exit_code=0
-    if [[ ${#tests_to_run[@]} -eq 1 ]]; then
+    if [[ ${#qualified_tests[@]} -eq 1 ]]; then
         # Single test - run directly
-        run_single_test "${tests_to_run[0]}" || exit_code=$?
+        local _test="${qualified_tests[0]%%:*}"
+        local _os="${qualified_tests[0]##*:}"
+        run_single_test "$_test" "$_os" || exit_code=$?
     else
-        # Multiple tests
-        if [[ "$EXECUTION" == "parallel" ]]; then
-            run_tests_parallel "${tests_to_run[@]}" || exit_code=$?
+        # Multiple tests — handle nic-hotplug sequencing for --os both --parallel
+        # NOTE: --os both --parallel may cause races when the same base test runs
+        # linux + windows concurrently (shared test directory for template rendering).
+        # Known limitation: use --os both without --parallel for guaranteed safety.
+        # Only nic-hotplug is serialized due to NNCP resource conflicts.
+        if [[ "$EXECUTION" == "parallel" && "$OS_FLAG" == "both" ]]; then
+            # Split nic-hotplug entries out for sequential execution
+            local _parallel_batch=()
+            local _nic_sequential=()
+            for _qe in "${qualified_tests[@]}"; do
+                if [[ "${_qe%%:*}" == "nic-hotplug" ]]; then
+                    _nic_sequential+=("$_qe")
+                else
+                    _parallel_batch+=("$_qe")
+                fi
+            done
+            if [[ ${#_parallel_batch[@]} -gt 0 ]]; then
+                run_tests_parallel "${_parallel_batch[@]}" || exit_code=$?
+            fi
+            if [[ ${#_nic_sequential[@]} -gt 0 ]]; then
+                run_tests_sequential "${_nic_sequential[@]}" || { local rc=$?; [[ $exit_code -eq 0 ]] && exit_code=$rc; } || true
+            fi
+        elif [[ "$EXECUTION" == "parallel" ]]; then
+            run_tests_parallel "${qualified_tests[@]}" || exit_code=$?
         else
-            run_tests_sequential "${tests_to_run[@]}" || exit_code=$?
+            run_tests_sequential "${qualified_tests[@]}" || exit_code=$?
         fi
         
         # Print summary for multi-test runs
-        print_summary_table "${tests_to_run[@]}"
+        print_summary_table "${qualified_tests[@]}"
     fi
     
     logmain INFO "All tests completed"
