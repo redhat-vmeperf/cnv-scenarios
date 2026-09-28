@@ -6,7 +6,7 @@
 {{- $vmCount := .vmCount | default 1 -}}
 {{- $vmName := "disk-hotplug-vm" -}}
 {{- $sshPublicKeySecretName := $vmName -}}
-{{- $diskCount := .diskCount | default 256 -}}
+{{- $diskCount := .diskCount | default 254 -}}
 {{- $jobCounterLabelKey := (list $testName "." $kubeBurnerFQDN "/counter") | join "" -}}
 {{- $jobCounterLabelValue := (list "counter-" (.counter | toString )) | join "" -}}
 {{- $testNamespacesLabelKey := (list $kubeBurnerFQDN "/test-name") | join "" -}}
@@ -155,7 +155,7 @@ jobs:
   objects:
 {{- $persist := .hotplugPersist | default true }}
 {{- $prefix := .pvcPrefix | default "hotplug-disk" }}
-{{- range $i, $_ := until (.diskCount | default 256 | int) }}
+{{- range $i, $_ := until (.diskCount | default 254 | int) }}
   - kubeVirtOp: add-volume
     labelSelector: 
       {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}

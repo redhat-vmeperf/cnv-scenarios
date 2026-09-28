@@ -114,8 +114,8 @@ jobs:
   defaultMissingKeysWithZero: true
   beforeCleanup: "config/scripts/check.sh check_vm_running {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} all {{ .privateKey }} {{ .vmUser }} {{ .percentage_of_vms_to_validate | default 25 }} {{ .max_ssh_retries | default 8 }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }} {{ .guestOS | default "linux" }}"
   objects:
+  # Per namespace (not runOnce): multi-NS scale-out VMs mount this secret; runOnce left it only in NS-0.
   - objectTemplate: templates/ssh-secret.yml
-    runOnce: true
     replicas: 1
     inputVars:
       name: {{ $testName }}-ssh
@@ -154,6 +154,7 @@ jobs:
       name: {{ $vmName }}
       counter: {{ .counter | toString }}
       sshPublicKeySecret: {{ $testName }}-ssh
+      publicKey: {{ .publicKey }}
       OS: alpine
       cpuRequest: {{ .vmCpuRequest }}
       cpuLimit: {{ .vmCpuLimit }}

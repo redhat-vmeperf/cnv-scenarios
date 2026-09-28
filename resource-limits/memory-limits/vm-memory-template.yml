@@ -70,12 +70,10 @@ spec:
             ssh_authorized_keys:
               - {{ .publicKey | ReadFile }}
             runcmd:
-              # Install memory testing tools
-              - dnf install -y stress-ng htop free
-              # Calculate memory to stress (90% of available)
-              - TOTAL_MEM=$(free -m | awk 'NR==2{printf "%.0f", $2*0.9}')
-              # Start memory stress test
-              - nohup stress-ng --vm 4 --vm-bytes ${TOTAL_MEM}M --vm-method all --verify --timeout 0 &
+              # No dnf/stress-ng: Fedora Cloud package install OOMs below ~512Mi.
+              # Shell memory burn embeds CNV_MEM_BURN in argv for check.sh.
+              - |
+                nohup /bin/bash -c "CNV_MEM_BURN=1; TOTAL=\$(free -m | awk 'NR==2{print int(\$2*0.5)}'); [ -z \"\$TOTAL\" ] && TOTAL=8; [ \"\$TOTAL\" -lt 8 ] && TOTAL=8; dd if=/dev/zero of=/dev/shm/cnv-mem-burn bs=1M count=\"\$TOTAL\" 2>/dev/null || true; while true; do sleep 3600; done" >/dev/null 2>&1 &
         name: cloudinitdisk
   dataVolumeTemplates:
   - metadata:

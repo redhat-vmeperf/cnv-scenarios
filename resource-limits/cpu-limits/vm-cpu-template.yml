@@ -75,10 +75,22 @@ spec:
             ssh_authorized_keys:
               - {{ .publicKey | ReadFile }}
             runcmd:
-              # Install stress-ng for CPU testing
-              - dnf install -y stress-ng htop
-              # Start CPU stress test on all vCPUs (cores * sockets)
-              - nohup stress-ng --cpu $(nproc) --timeout 0 &
+              # Prefer stress-ng; fall back to shell CPU burn if dnf OOMs (e.g. <512Mi RAM).
+              - |
+                if ! command -v stress-ng >/dev/null 2>&1; then
+                  dnf install -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs stress-ng || true
+                fi
+                if command -v stress-ng >/dev/null 2>&1; then
+                  nohup stress-ng --cpu "$(nproc)" --timeout 0 >/dev/null 2>&1 &
+                else
+                  n="$(nproc)"
+                  i=0
+                  while [ "${i}" -lt "${n}" ]; do
+                    # Marker must appear in argv (ps aux), not only in environ.
+                    nohup /bin/bash -c 'CNV_CPU_BURN=1; while true; do :; done' >/dev/null 2>&1 &
+                    i=$((i + 1))
+                  done
+                fi
         name: cloudinitdisk
   dataVolumeTemplates:
   - metadata:

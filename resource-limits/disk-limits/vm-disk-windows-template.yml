@@ -53,9 +53,10 @@ spec:
           - disk:
               bus: virtio
             name: rootdisk
+          {{- $dataBus := .diskBus | default "virtio" }}
           {{- range $i := until (.diskCount | int) }}
           - disk:
-              bus: virtio
+              bus: {{ $dataBus }}
             name: datadisk-{{ add $i 1 }}
           {{- end }}
           interfaces:

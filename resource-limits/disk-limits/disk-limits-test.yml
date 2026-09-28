@@ -91,6 +91,7 @@ jobs:
       cpuCores: {{ .cpuCores | default 16 }}
       memory: {{ .memory | default "32Gi" }}
       diskCount: {{ .diskCount | default 1 }}
+      diskBus: {{ .diskBus | default "virtio" }}
       rootStorage: {{ .windowsRootDiskSize | default "100Gi" }}
       storage: {{ .diskSize | default "10Gi" }}
       storageclass: {{ .storageClassName | default "ocs-storagecluster-ceph-rbd" }}
@@ -116,6 +117,7 @@ jobs:
       url: {{ .imageUrl | default "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2" }}
       # Disk configuration - can be overridden via CLI
       diskCount: {{ .diskCount | default 1 }}
+      diskBus: {{ .diskBus | default "virtio" }}
       storage: {{ .diskSize | default "10Gi" }}
       storageclass: {{ .storageClassName | default "ocs-storagecluster-ceph-rbd" }}
       volumemode: {{ .volumeMode | default "Block" }}

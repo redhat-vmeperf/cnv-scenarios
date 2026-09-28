@@ -37,12 +37,16 @@ spec:
           cores: {{.cpuCores}}
         devices:
           disks:
+          # Root + cloudinit stay virtio (boot/cloud-init). Data disks use
+          # diskBus (virtio|scsi). High virtio counts exhaust guest MSI/IRQs
+          # and drop the NIC (ENOSPC/-28); use scsi for >=~180 data disks.
           - disk:
               bus: virtio
             name: rootdisk
+          {{- $dataBus := .diskBus | default "virtio" }}
           {{- range $i := until (.diskCount | int) }}
           - disk:
-              bus: virtio
+              bus: {{ $dataBus }}
             name: datadisk-{{ add $i 1 }}
           {{- end }}
           - disk:
@@ -87,13 +91,21 @@ spec:
               expire: false
 
             runcmd:
-              - dnf install -y fio hdparm smartmontools
+              # Best-effort tools; disk count/size checks do not require fio.
+              # dnf can OOM below ~512Mi guest RAM - do not block disk setup.
+              - dnf install -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs fio hdparm smartmontools || true
               - |
                 DISK_INDEX=1
-                for dev in /dev/vd[b-z]; do
-                  if [ ! -b "$dev" ]; then continue; fi
+                root_src=$(findmnt -no SOURCE / 2>/dev/null || true)
+                root_base=$(echo "$root_src" | sed -E 's|[0-9]+$||; s|/dev/||')
+                lsblk -dn -o NAME,TYPE | awk '$2=="disk"{print $1}' | while read -r name; do
+                  [ -z "$name" ] && continue
+                  [ "$name" = "$root_base" ] && continue
+                  case "$name" in zram*|loop*|sr*) continue ;; esac
+                  dev="/dev/${name}"
+                  [ -b "$dev" ] || continue
                   mount | grep -q "$dev" && continue
-                  if ! lsblk -no NAME "${dev}1" | grep -q .; then
+                  if ! lsblk -no NAME "${dev}1" 2>/dev/null | grep -q .; then
                     echo -e "label: gpt\n,," | sfdisk "$dev"
                     partprobe "$dev"
                     sleep 2
@@ -110,10 +122,10 @@ spec:
                   mount_point="/mnt/disk${DISK_INDEX}"
                   mkdir -p "$mount_point"
                   uuid=$(blkid -s UUID -o value "$part")
-                  if ! grep -q "$uuid" /etc/fstab; then
+                  if [ -n "$uuid" ] && ! grep -q "$uuid" /etc/fstab; then
                     echo "UUID=$uuid $mount_point xfs defaults 0 0" >> /etc/fstab
                   fi
-                  mount "$mount_point"
+                  mount "$mount_point" || true
                   DISK_INDEX=$((DISK_INDEX + 1))
                 done
               - dd if=/dev/zero of=/mnt/disk1/testfile bs=1G count=10 &

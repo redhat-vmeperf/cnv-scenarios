@@ -108,18 +108,14 @@ spec:
                 sudo: ALL=(ALL) NOPASSWD:ALL
                 lock_passwd: false
                 plain_text_passwd: alpine
+                ssh_authorized_keys:
+                  - {{ .publicKey | ReadFile }}
             ssh_pwauth: true
             chpasswd:
                 expire: false
-            package_update: true
-            packages:
-              - qemu-guest-agent
-
-            # Enable and start the service
-            runcmd:
-              - apk add qemu-guest-agent
-              - rc-update add qemu-guest-agent default
-              - service qemu-guest-agent start
+            # No package_update / apk: Alpine at 256Mi OOMs on package install.
+            # Inject SSH key via cloud-init (Alpine cloud image has no qemu-guest-agent;
+            # accessCredentials qemuGuestAgent alone leaves keys unsynced).
         name: cloudinitdisk
   dataVolumeTemplates:
   - metadata:

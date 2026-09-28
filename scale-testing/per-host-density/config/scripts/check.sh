@@ -200,12 +200,14 @@ function check_vm_running() {
                 all_vms=$(oc get vm ${ns_flag} -l "${label_selector}" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}')
             fi
             
-            # Shuffle VM list and select required number
+            # Shuffle VM list and select required number.
+            # Use shuf -n (not shuf|head): with set -o pipefail, head closing early
+            # SIGPIPEs shuf -> exit 141 and aborts validation (seen at 500 NS / 50 sample).
             local selected_vms
-            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | grep -v '^$' | shuf | head -n "${vms_to_validate}")
+            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | grep -v '^$' | shuf -n "${vms_to_validate}")
             
             echo "Randomly selected VMs for SSH validation:"
-            echo "${selected_vms}" | head -5
+            echo "${selected_vms}" | sed -n '1,5p'
             [ "${vms_to_validate}" -gt 5 ] && echo "... and $((vms_to_validate - 5)) more"
             echo ""
             

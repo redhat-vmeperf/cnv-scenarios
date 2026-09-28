@@ -13,6 +13,7 @@ vmCount: 1
 # Disk Configuration (minimal)
 diskCount: 2
 diskSize: "1Gi"
+diskBus: "virtio"
 windowsRootDiskSize: "100Gi"
 
 # Resource Configuration (minimal)

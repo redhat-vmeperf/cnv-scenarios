@@ -29,7 +29,7 @@ vmCount: 1                                 # Number of VMs to create for testing
 vmRunning: true                            # Whether VMs should start immediately
 
 # Disk Hot-plug Configuration
-diskCount: 15                              # Number of disks to hot-plug (scenario max: 256)
+diskCount: 15                              # Number of disks to hot-plug (max 254: KubeVirt 256 total minus rootdisk + cloudinit)
 pvcPrefix: "hotplug-disk"                  # Prefix for hot-plug PVC names
 pvcSize: "2Gi"                             # Size of each hot-plug disk
 hotplugPersist: true                       # If true, added volumes are persisted on the VM spec

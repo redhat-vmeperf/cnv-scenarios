@@ -21,6 +21,125 @@ log_validation_end() {
     echo "VALIDATION_END|status=${status}|duration=${duration}"
 }
 
+# Guest SKIP is only valid when SSH was never configured. If credentials were
+# provided and a guest phase is still SKIP, the run would be a false green.
+require_guest_phase_done() {
+    local phase_var_name="$1"
+    local phase_name="$2"
+    local status_value="${!phase_var_name}"
+    if [ "${status_value}" = "SKIP" ]; then
+        echo "  ✗ Guest phase ${phase_name} skipped but SSH credentials were provided"
+        log_validation_checkpoint "${phase_name}" "FAIL" \
+            "Required guest validation skipped (SSH failed or incomplete)"
+        printf -v "${phase_var_name}" '%s' "FAIL"
+        return 1
+    fi
+    return 0
+}
+
+# Parse KubeVirt/K8s storage quantity to bytes (Mi/Gi/Ti and M/G/T).
+parse_storage_quantity_bytes() {
+    local quantity="$1"
+    if [[ "${quantity}" =~ ^([0-9]+)Ti$ ]]; then
+        echo $((BASH_REMATCH[1] * 1024 * 1024 * 1024 * 1024))
+    elif [[ "${quantity}" =~ ^([0-9]+)Gi$ ]]; then
+        echo $((BASH_REMATCH[1] * 1024 * 1024 * 1024))
+    elif [[ "${quantity}" =~ ^([0-9]+)Mi$ ]]; then
+        echo $((BASH_REMATCH[1] * 1024 * 1024))
+    elif [[ "${quantity}" =~ ^([0-9]+)Ki$ ]]; then
+        echo $((BASH_REMATCH[1] * 1024))
+    elif [[ "${quantity}" =~ ^([0-9]+)T$ ]]; then
+        echo $((BASH_REMATCH[1] * 1000 * 1000 * 1000 * 1000))
+    elif [[ "${quantity}" =~ ^([0-9]+)G$ ]]; then
+        echo $((BASH_REMATCH[1] * 1000 * 1000 * 1000))
+    elif [[ "${quantity}" =~ ^([0-9]+)M$ ]]; then
+        echo $((BASH_REMATCH[1] * 1000 * 1000))
+    elif [[ "${quantity}" =~ ^([0-9]+)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        echo "0"
+    fi
+}
+
+# Count Linux guest data disks from lsblk --json -b output.
+# Excludes root, zram, and tiny volumes (cloud-init); min_bytes
+# defaults to half the expected size so 256Mi disks are counted but ~1Mi
+# cloud-init disks are not.
+#
+# Root heuristic: if vda exists, root is virtio (exclude vda only).
+# Otherwise treat sda as root (SCSI/SATA). Needed when data disks use
+# diskBus=scsi while root stays virtio — otherwise sda (first data disk)
+# is wrongly dropped and guest count is expected-1.
+count_linux_guest_data_disks() {
+    local blk_json="$1"
+    local min_bytes="${2:-67108864}" # 64Mi floor
+    echo "${blk_json}" | jq --argjson min "${min_bytes}" '
+        (any(.blockdevices[]?; .name == "vda")) as $has_vda |
+        [.blockdevices[]? | select(
+            .type == "disk"
+            and (.name | startswith("zram") | not)
+            and ((.size | tonumber) >= $min)
+            and (
+                if $has_vda then .name != "vda"
+                else .name != "vda" and .name != "sda"
+                end
+            )
+        )] | length'
+}
+
+# List Linux guest data-disk sizes in bytes (same filters as count).
+list_linux_guest_data_disk_bytes() {
+    local blk_json="$1"
+    local min_bytes="${2:-67108864}"
+    echo "${blk_json}" | jq -r --argjson min "${min_bytes}" '
+        (any(.blockdevices[]?; .name == "vda")) as $has_vda |
+        .blockdevices[]? | select(
+            .type == "disk"
+            and (.name | startswith("zram") | not)
+            and ((.size | tonumber) >= $min)
+            and (
+                if $has_vda then .name != "vda"
+                else .name != "vda" and .name != "sda"
+                end
+            )
+        ) | .size'
+}
+
+# Return 0 if sizes match within tolerance (5%, or absolute 1Gi when expected >= 1Gi).
+storage_bytes_within_tolerance() {
+    local expected_bytes="$1"
+    local actual_bytes="$2"
+    awk -v e="${expected_bytes}" -v a="${actual_bytes}" 'BEGIN {
+        if (e <= 0) exit 1
+        diff = e - a; if (diff < 0) diff = -diff
+        tol = e * 0.05
+        one_gi = 1024 * 1024 * 1024
+        # Match prior behavior: fail only if outside 5% AND more than 1Gi apart
+        # when expected is large; for sub-Gi disks use 5% only.
+        if (e >= one_gi) {
+            exit (diff > tol && diff > one_gi)
+        }
+        if (tol < 1) tol = 1
+        exit (diff > tol)
+    }'
+}
+
+# Guest MemTotal tolerance in MiB: ±15%, but for guests under 1Gi use at least
+# ±80Mi so fixed firmware/kernel overhead does not fail Minimum memory (256Mi).
+guest_memory_tolerance_mb() {
+    local expected_mb="$1"
+    local pct=$((expected_mb * 15 / 100))
+    local floor=0
+    if [ "${expected_mb}" -lt 1024 ]; then
+        floor=80
+    fi
+    if [ "${pct}" -gt "${floor}" ]; then
+        echo "${pct}"
+    else
+        echo "${floor}"
+    fi
+}
+
 # Generate JSON validation report
 # Usage: save_validation_report <test_name> <status> <namespace> <params_json> [<validations_json>] [<results_dir>]
 save_validation_report() {
@@ -440,9 +559,11 @@ check_cpu_limits() {
             test_output=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
 
             if [ $? -ne 0 ] || [ -z "${test_output}" ]; then
-                echo "  ⚠ ${vm}: SSH connection failed, skipping guest OS validation"
-                log_validation_checkpoint "guest_os_cpu_count" "SKIP" "VM ${vm}: SSH connection failed"
-                continue
+                echo "  ✗ ${vm}: SSH connection failed (guest CPU validation required)"
+                log_validation_checkpoint "guest_os_cpu_count" "FAIL" "VM ${vm}: SSH connection failed"
+                guest_os_validation_status="FAIL"
+                overall_status="FAILED"
+                break
             fi
 
             echo "  ✓ ${vm}: SSH connected"
@@ -539,7 +660,8 @@ check_cpu_limits() {
                     "${windows_guest_cpu_burn_count_cmd}" 2>/dev/null || echo "0")
             else
                 stress_process_count=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
-                    "ps aux | grep -c '[s]tress-ng-cpu'" 2>/dev/null || echo "0")
+                    'c=$(ps aux | grep -c "[s]tress-ng-cpu" || true); c=${c:-0}; if [ "$c" -gt 0 ]; then echo "$c"; else ps auxww | grep -c "[C]NV_CPU_BURN=" || true; fi' \
+                    2>/dev/null || echo "0")
             fi
             stress_process_count=$(echo "${stress_process_count}" | head -1 | tr -cd '0-9')
             stress_process_count=${stress_process_count:-0}
@@ -556,8 +678,8 @@ check_cpu_limits() {
                     echo "    Matching processes: ${cpu_burn_details}"
                     log_validation_checkpoint "stress_ng_processes" "FAIL" "Expected ${expected_cpu}, got ${stress_process_count}"
                 else
-                    echo "  ✗ ${vm}: stress-ng-cpu process count mismatch"
-                    echo "    Expected: ${expected_cpu} (1 per CPU core), Actual: ${stress_process_count}"
+                    echo "  ✗ ${vm}: CPU workload process count mismatch"
+                    echo "    Expected: ${expected_cpu} (stress-ng-cpu or CNV_CPU_BURN), Actual: ${stress_process_count}"
                     log_validation_checkpoint "stress_ng_processes" "FAIL" "Expected ${expected_cpu}, got ${stress_process_count}"
                 fi
                 overall_status="FAILED"
@@ -568,8 +690,9 @@ check_cpu_limits() {
                 echo "  ✓ ${vm}: ${stress_process_count} Windows CPU burn worker process(es)"
                 log_validation_checkpoint "stress_ng_processes" "PASS" "VM ${vm}: ${stress_process_count} CNV_CPU_BURN worker(s)"
             else
-                echo "  ✓ ${vm}: ${stress_process_count} stress-ng-cpu processes running"
-                log_validation_checkpoint "stress_ng_processes" "PASS" "VM ${vm}: ${stress_process_count} stress-ng-cpu processes running"
+                echo "  ✓ ${vm}: ${stress_process_count} CPU workload process(es) running"
+                log_validation_checkpoint "stress_ng_processes" "PASS" \
+                    "VM ${vm}: ${stress_process_count} CPU workload process(es) running"
             fi
             stress_ng_validation_status="PASS"
         done
@@ -577,6 +700,16 @@ check_cpu_limits() {
         echo ""
         echo "[Phase 4/4] Skipping workload process validation (no SSH credentials)"
         log_validation_checkpoint "stress_ng_processes" "SKIP" "SSH credentials not provided"
+    fi
+
+    # Credentials were provided: guest phases must not remain SKIP (false green).
+    if [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
+        if ! require_guest_phase_done guest_os_validation_status "guest_os_cpu_count"; then
+            overall_status="FAILED"
+        fi
+        if ! require_guest_phase_done stress_ng_validation_status "stress_ng_processes"; then
+            overall_status="FAILED"
+        fi
     fi
 
     # Generate summary
@@ -620,14 +753,18 @@ PARAMS
 
     if [ "${guest_os_validation_status}" = "PASS" ]; then
         guest_os_msg="Guest OS CPU count validation passed"
+    elif [ "${guest_os_validation_status}" = "FAIL" ]; then
+        guest_os_msg="Guest OS CPU count validation failed"
     else
-        guest_os_msg="Guest OS CPU count validation skipped (SSH connection failed or not configured)"
+        guest_os_msg="Guest OS CPU count validation skipped (SSH not configured)"
     fi
 
     if [ "${stress_ng_validation_status}" = "PASS" ]; then
         stress_ng_msg="stress-ng-cpu process count validation passed (${expected_cpu} processes)"
+    elif [ "${stress_ng_validation_status}" = "FAIL" ]; then
+        stress_ng_msg="stress-ng-cpu process count validation failed"
     else
-        stress_ng_msg="stress-ng-cpu process count validation skipped (SSH connection failed or not configured)"
+        stress_ng_msg="stress-ng-cpu process count validation skipped (SSH not configured)"
     fi
 
     local validations_json
@@ -732,9 +869,11 @@ check_memory_limits() {
             test_output=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
 
             if [ $? -ne 0 ] || [ -z "${test_output}" ]; then
-                echo "  ⚠ ${vm}: SSH connection failed, skipping guest OS validation"
-                log_validation_checkpoint "guest_os_memory" "SKIP" "VM ${vm}: SSH connection failed"
-                continue
+                echo "  ✗ ${vm}: SSH connection failed (guest memory validation required)"
+                log_validation_checkpoint "guest_os_memory" "FAIL" "VM ${vm}: SSH connection failed"
+                guest_os_validation_status="FAIL"
+                overall_status="FAILED"
+                break
             fi
 
             echo "  ✓ ${vm}: SSH connected"
@@ -752,6 +891,7 @@ check_memory_limits() {
             if [ "${guest_memory_mb}" -eq 0 ]; then
                 echo "  ✗ ${vm}: Failed to retrieve memory from guest OS"
                 log_validation_checkpoint "guest_os_memory" "FAIL" "Could not retrieve memory"
+                guest_os_validation_status="FAIL"
                 overall_status="FAILED"
                 break
             fi
@@ -767,21 +907,26 @@ check_memory_limits() {
             elif [[ "${expected_memory}" =~ ^([0-9]+)M$ ]]; then
                 expected_memory_mb=${BASH_REMATCH[1]}
             else
-                echo "  ⚠ ${vm}: Cannot parse memory format '${expected_memory}'"
-                log_validation_checkpoint "guest_os_memory" "SKIP" "Cannot parse memory format"
-                continue
+                echo "  ✗ ${vm}: Cannot parse memory format '${expected_memory}'"
+                log_validation_checkpoint "guest_os_memory" "FAIL" "Cannot parse memory format"
+                guest_os_validation_status="FAIL"
+                overall_status="FAILED"
+                break
             fi
 
-            # Allow 15% tolerance for memory comparison
-            local tolerance=$((expected_memory_mb * 15 / 100))
+            # ±15%, with ±80Mi floor under 1Gi (firmware/kernel overhead at 256Mi).
+            local tolerance
+            tolerance=$(guest_memory_tolerance_mb "${expected_memory_mb}")
             local min_memory=$((expected_memory_mb - tolerance))
             local max_memory=$((expected_memory_mb + tolerance))
+            [ "${min_memory}" -lt 0 ] && min_memory=0
 
-            echo "    Expected: ${expected_memory_mb}MB, Tolerance: ±15% (${min_memory}-${max_memory}MB)"
+            echo "    Expected: ${expected_memory_mb}MB, Tolerance: ±${tolerance}MB (${min_memory}-${max_memory}MB)"
 
             if [ "${guest_memory_mb}" -lt "${min_memory}" ] || [ "${guest_memory_mb}" -gt "${max_memory}" ]; then
                 echo "  ✗ ${vm}: Guest OS memory ${guest_memory_mb}MB outside expected range"
                 log_validation_checkpoint "guest_os_memory" "FAIL" "Expected ~${expected_memory_mb}MB, got ${guest_memory_mb}MB"
+                guest_os_validation_status="FAIL"
                 overall_status="FAILED"
                 break
             fi
@@ -943,32 +1088,50 @@ check_memory_limits() {
                 stress_ng_validation_status="PASS"
             done
         else
-            echo "[Phase 4/4] Checking stress-ng memory processes..."
+            # Prefer stress-ng when present; else CNV_MEM_BURN shell burn (low-RAM path).
+            echo "[Phase 4/4] Checking memory workload processes (stress-ng or CNV_MEM_BURN)..."
             for vm in ${vms}; do
                 echo "  Checking ${vm}..."
 
                 local stress_process_count
                 stress_process_count=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
-                    "ps aux | grep -c '[s]tress-ng'" 2>/dev/null || echo "0")
+                    "ps auxww | grep -cE '[s]tress-ng|[C]NV_MEM_BURN='" 2>/dev/null || echo "0")
                 stress_process_count=$(echo "${stress_process_count}" | head -1 | tr -cd '0-9')
                 stress_process_count=${stress_process_count:-0}
 
                 if [ "${stress_process_count}" -eq 0 ]; then
-                    echo "  ✗ ${vm}: No stress-ng processes found"
-                    log_validation_checkpoint "stress_ng_processes" "FAIL" "No stress-ng processes found"
+                    echo "  ✗ ${vm}: No memory workload processes found (stress-ng or CNV_MEM_BURN)"
+                    log_validation_checkpoint "stress_ng_processes" "FAIL" \
+                        "No stress-ng or CNV_MEM_BURN processes found"
                     overall_status="FAILED"
                     break
                 fi
 
-                echo "  ✓ ${vm}: ${stress_process_count} stress-ng process(es) running"
-                log_validation_checkpoint "stress_ng_processes" "PASS" "VM ${vm}: ${stress_process_count} stress-ng process(es) running"
+                echo "  ✓ ${vm}: ${stress_process_count} memory workload process(es) running"
+                log_validation_checkpoint "stress_ng_processes" "PASS" \
+                    "VM ${vm}: ${stress_process_count} memory workload process(es) running"
                 stress_ng_validation_status="PASS"
             done
         fi
+    elif [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
+        echo ""
+        echo "[Phase 4/4] Skipping memory workload validation (prior phase failed)"
+        log_validation_checkpoint "stress_ng_processes" "FAIL" "Skipped due to prior validation failure"
+        stress_ng_validation_status="FAIL"
     else
         echo ""
         echo "[Phase 4/4] Skipping memory workload validation (no SSH credentials)"
         log_validation_checkpoint "stress_ng_processes" "SKIP" "SSH credentials not provided"
+    fi
+
+    # Credentials were provided: guest phases must not remain SKIP (false green).
+    if [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
+        if ! require_guest_phase_done guest_os_validation_status "guest_os_memory"; then
+            overall_status="FAILED"
+        fi
+        if ! require_guest_phase_done stress_ng_validation_status "stress_ng_processes"; then
+            overall_status="FAILED"
+        fi
     fi
 
     # Generate summary
@@ -1133,9 +1296,11 @@ check_disk_limits() {
             test_output=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "echo SSH_OK" 2>&1)
 
             if [ $? -ne 0 ] || [ -z "${test_output}" ]; then
-                echo "  ⚠ ${vm}: SSH connection failed, skipping guest OS validation"
-                log_validation_checkpoint "guest_os_disk_count" "SKIP" "VM ${vm}: SSH connection failed"
-                continue
+                echo "  ✗ ${vm}: SSH connection failed (guest disk validation required)"
+                log_validation_checkpoint "guest_os_disk_count" "FAIL" "VM ${vm}: SSH connection failed"
+                guest_os_disk_count_status="FAIL"
+                overall_status="FAILED"
+                break
             fi
 
             echo "  ✓ ${vm}: SSH connected"
@@ -1147,16 +1312,31 @@ check_disk_limits() {
                 guest_disk_count=${guest_disk_count:-0}
             else
                 local blk_devices
-                blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE" 2>/dev/null)
+                blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
+                    "lsblk --json -d -n -b -o NAME,TYPE,SIZE" 2>/dev/null)
 
                 if [ $? -ne 0 ] || [ -z "${blk_devices}" ]; then
                     echo "  ✗ ${vm}: Failed to get block devices"
                     log_validation_checkpoint "guest_os_disk_count" "FAIL" "Could not retrieve block devices"
+                    guest_os_disk_count_status="FAIL"
                     overall_status="FAILED"
                     break
                 fi
 
-                guest_disk_count=$(echo "${blk_devices}" | jq '[.blockdevices[] | select(.type == "disk" and .name != "vda" and .name != "sda" and (.name | startswith("zram") | not) and (.size | test("^[0-9]+(\\.)?[0-9]*[GT]")))] | length')
+                local expected_bytes min_bytes
+                expected_bytes=$(parse_storage_quantity_bytes "${expected_disk_size}")
+                min_bytes=$((expected_bytes / 2))
+                # Floor at 64Mi so tiny cloud-init disks are never counted.
+                if [ "${min_bytes}" -lt 67108864 ]; then
+                    min_bytes=67108864
+                fi
+                # For expected < 128Mi, use half expected (still above cloud-init).
+                if [ "${expected_bytes}" -gt 0 ] && [ "${expected_bytes}" -lt 134217728 ]; then
+                    min_bytes=$((expected_bytes / 2))
+                    [ "${min_bytes}" -lt 1048576 ] && min_bytes=1048576
+                fi
+
+                guest_disk_count=$(count_linux_guest_data_disks "${blk_devices}" "${min_bytes}")
             fi
 
             if [ "${guest_disk_count}" != "${expected_disk_count}" ]; then
@@ -1181,10 +1361,17 @@ check_disk_limits() {
         echo ""
         echo "[Phase 5/5] Checking guest OS disk sizes..."
 
-        local expected_size_numeric
-        expected_size_numeric=$(echo "${expected_disk_size}" | sed 's/Gi$//')
+        local expected_bytes
+        expected_bytes=$(parse_storage_quantity_bytes "${expected_disk_size}")
+        if [ "${expected_bytes}" -eq 0 ]; then
+            echo "  ✗ Cannot parse expected disk size '${expected_disk_size}'"
+            log_validation_checkpoint "guest_os_disk_size" "FAIL" "Cannot parse disk size ${expected_disk_size}"
+            guest_os_disk_size_status="FAIL"
+            overall_status="FAILED"
+        fi
 
         for vm in ${vms}; do
+            [ "${overall_status}" = "SUCCESS" ] || break
             echo "  Checking ${vm}..."
 
             if [ "${guest_os}" = "windows" ]; then
@@ -1192,59 +1379,97 @@ check_disk_limits() {
                 # shellcheck disable=SC2016
                 size_lines=$(
                     remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
-                        'powershell.exe -NoProfile -Command "Get-Disk | Where-Object { -not $_.IsSystem } | ForEach-Object { [math]::Round($_.Size/1GB) }"' 2>/dev/null || true
+                        'powershell.exe -NoProfile -Command "Get-Disk | Where-Object { -not $_.IsSystem } | ForEach-Object { $_.Size }"' 2>/dev/null || true
                 )
-                while IFS= read -r guest_gb; do
-                    guest_gb=$(echo "${guest_gb}" | tr -cd '0-9')
-                    [ -z "${guest_gb}" ] && continue
-                    local size_diff
-                    size_diff=$(echo "${expected_size_numeric} ${guest_gb}" | awk '{diff=$1-$2; if(diff<0) diff=-diff; print diff}')
-                    local tolerance
-                    tolerance=$(echo "${expected_size_numeric}" | awk '{print $1*0.05}')
-                    if (($(echo "${size_diff} > ${tolerance}" | bc -l))) && (($(echo "${size_diff} > 1" | bc -l))); then
-                        echo "  ✗ ${vm}: Guest disk size mismatch (Windows). Expected: ~${expected_disk_size}, Actual: ${guest_gb}Gi"
-                        log_validation_checkpoint "guest_os_disk_size" "FAIL" "Expected ~${expected_size_numeric}G, got ${guest_gb}G"
+                local matched=0
+                while IFS= read -r guest_bytes; do
+                    guest_bytes=$(echo "${guest_bytes}" | tr -cd '0-9')
+                    [ -z "${guest_bytes}" ] && continue
+                    if ! storage_bytes_within_tolerance "${expected_bytes}" "${guest_bytes}"; then
+                        echo "  ✗ ${vm}: Guest disk size mismatch (Windows). Expected: ${expected_disk_size} (${expected_bytes}B), Actual: ${guest_bytes}B"
+                        log_validation_checkpoint "guest_os_disk_size" "FAIL" \
+                            "Expected ~${expected_bytes}B, got ${guest_bytes}B"
+                        guest_os_disk_size_status="FAIL"
                         overall_status="FAILED"
                         break 2
                     fi
+                    matched=1
                 done <<<"${size_lines}"
+                if [ "${matched}" -eq 0 ] && [ "${overall_status}" = "SUCCESS" ]; then
+                    echo "  ✗ ${vm}: No Windows data disk sizes returned"
+                    log_validation_checkpoint "guest_os_disk_size" "FAIL" "No guest disk sizes"
+                    guest_os_disk_size_status="FAIL"
+                    overall_status="FAILED"
+                    break
+                fi
             else
                 local blk_devices
-                blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE" 2>/dev/null)
+                blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
+                    "lsblk --json -d -n -b -o NAME,TYPE,SIZE" 2>/dev/null)
 
                 if [ $? -ne 0 ] || [ -z "${blk_devices}" ]; then
-                    continue
+                    echo "  ✗ ${vm}: Failed to get block devices for size check"
+                    log_validation_checkpoint "guest_os_disk_size" "FAIL" "Could not retrieve block devices"
+                    guest_os_disk_size_status="FAIL"
+                    overall_status="FAILED"
+                    break
+                fi
+
+                local min_bytes=$((expected_bytes / 2))
+                if [ "${min_bytes}" -lt 67108864 ]; then
+                    min_bytes=67108864
+                fi
+                if [ "${expected_bytes}" -gt 0 ] && [ "${expected_bytes}" -lt 134217728 ]; then
+                    min_bytes=$((expected_bytes / 2))
+                    [ "${min_bytes}" -lt 1048576 ] && min_bytes=1048576
                 fi
 
                 local guest_disk_sizes
-                guest_disk_sizes=$(echo "${blk_devices}" | jq -r '.blockdevices[] | select(.type == "disk" and .name != "vda" and .name != "sda" and (.name | startswith("zram") | not) and (.size | test("^[0-9]+(\\.)?[0-9]*[GT]"))) | .size')
-
+                guest_disk_sizes=$(list_linux_guest_data_disk_bytes "${blk_devices}" "${min_bytes}")
+                local matched=0
                 for guest_size in ${guest_disk_sizes}; do
-                    local guest_size_numeric
-                    guest_size_numeric=$(echo "${guest_size}" | sed 's/[^0-9.]//g')
-
-                    local size_diff
-                    size_diff=$(echo "${expected_size_numeric} ${guest_size_numeric}" | awk '{diff=$1-$2; if(diff<0) diff=-diff; print diff}')
-                    local tolerance
-                    tolerance=$(echo "${expected_size_numeric}" | awk '{print $1*0.05}')
-
-                    if (($(echo "${size_diff} > ${tolerance}" | bc -l))) && (($(echo "${size_diff} > 1" | bc -l))); then
-                        echo "  ✗ ${vm}: Guest disk size mismatch. Expected: ~${expected_disk_size}, Actual: ${guest_size}"
-                        log_validation_checkpoint "guest_os_disk_size" "FAIL" "Expected ~${expected_size_numeric}G, got ${guest_size}"
+                    matched=1
+                    if ! storage_bytes_within_tolerance "${expected_bytes}" "${guest_size}"; then
+                        echo "  ✗ ${vm}: Guest disk size mismatch. Expected: ${expected_disk_size} (${expected_bytes}B), Actual: ${guest_size}B"
+                        log_validation_checkpoint "guest_os_disk_size" "FAIL" \
+                            "Expected ~${expected_bytes}B, got ${guest_size}B"
+                        guest_os_disk_size_status="FAIL"
                         overall_status="FAILED"
                         break 2
                     fi
                 done
+                if [ "${matched}" -eq 0 ]; then
+                    echo "  ✗ ${vm}: No guest data disks found for size check"
+                    log_validation_checkpoint "guest_os_disk_size" "FAIL" "No guest data disks"
+                    guest_os_disk_size_status="FAIL"
+                    overall_status="FAILED"
+                    break
+                fi
             fi
 
             echo "  ✓ ${vm}: Guest disk sizes match (within 5% tolerance)"
             log_validation_checkpoint "guest_os_disk_size" "PASS" "VM ${vm}: All data disk sizes match (within 5% tolerance)"
             guest_os_disk_size_status="PASS"
         done
+    elif [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
+        echo ""
+        echo "[Phase 5/5] Skipping guest OS disk size validation (prior phase failed)"
+        log_validation_checkpoint "guest_os_disk_size" "FAIL" "Skipped due to prior validation failure"
+        guest_os_disk_size_status="FAIL"
     else
         echo ""
         echo "[Phase 5/5] Skipping guest OS disk size validation (no SSH credentials)"
         log_validation_checkpoint "guest_os_disk_size" "SKIP" "SSH credentials not provided"
+    fi
+
+    # Credentials were provided: guest phases must not remain SKIP (false green).
+    if [ -n "${private_key}" ] && [ -n "${vm_user}" ]; then
+        if ! require_guest_phase_done guest_os_disk_count_status "guest_os_disk_count"; then
+            overall_status="FAILED"
+        fi
+        if ! require_guest_phase_done guest_os_disk_size_status "guest_os_disk_size"; then
+            overall_status="FAILED"
+        fi
     fi
 
     # Generate summary
@@ -1394,7 +1619,8 @@ check_disk_hotplug() {
                     echo "VM ${vm}: Attach devices: ${attach_devices}"
 
                     local blk_devices
-                    blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" "lsblk --json -d -n -o NAME,TYPE,SIZE")
+                    blk_devices=$(remote_command "${namespace}" "${private_key}" "${vm_user}" "${vm}" \
+                        "lsblk --json -d -n -b -o NAME,TYPE,SIZE")
                     local ret=$?
                     if [ $ret -ne 0 ] || [ -z "${blk_devices}" ]; then
                         echo "ERROR: Failed to get block devices for VM ${vm}"
@@ -1402,9 +1628,19 @@ check_disk_hotplug() {
                         return 1
                     fi
 
-                    # Count block devices excluding vda/sda (rootdisk), zram (swap), and small disks (< 1GB, like cloudinitdisk)
+                    local expected_bytes min_bytes
+                    expected_bytes=$(parse_storage_quantity_bytes "${expected_disk_size}")
+                    min_bytes=$((expected_bytes / 2))
+                    if [ "${min_bytes}" -lt 67108864 ]; then
+                        min_bytes=67108864
+                    fi
+                    if [ "${expected_bytes}" -gt 0 ] && [ "${expected_bytes}" -lt 134217728 ]; then
+                        min_bytes=$((expected_bytes / 2))
+                        [ "${min_bytes}" -lt 1048576 ] && min_bytes=1048576
+                    fi
+
                     local guest_disk_count
-                    guest_disk_count=$(echo "${blk_devices}" | jq '[.blockdevices[] | select(.type == "disk" and .name != "vda" and .name != "sda" and (.name | startswith("zram") | not) and (.size | test("^[0-9]+(\\.)?[0-9]*[GT]")))] | length')
+                    guest_disk_count=$(count_linux_guest_data_disks "${blk_devices}" "${min_bytes}")
 
                     echo "VM ${vm}: Guest OS shows ${guest_disk_count} hot-plugged disk(s)"
 
@@ -1416,28 +1652,14 @@ check_disk_hotplug() {
 
                     log_validation_checkpoint "guest_os_disk_count" "PASS" "VM ${vm}: ${guest_disk_count} disks visible in guest OS"
 
-                    # Validate disk sizes in guest OS
-                    local expected_size_numeric
-                    expected_size_numeric=$(echo "${expected_disk_size}" | sed 's/Gi$//' | sed 's/G$//')
-
-                    # Get actual sizes from guest OS (excluding vda/sda and zram)
+                    # Validate disk sizes in guest OS (bytes)
                     local guest_disk_sizes
-                    guest_disk_sizes=$(echo "${blk_devices}" | jq -r '.blockdevices[] | select(.type == "disk" and .name != "vda" and .name != "sda" and (.name | startswith("zram") | not)) | .size')
+                    guest_disk_sizes=$(list_linux_guest_data_disk_bytes "${blk_devices}" "${min_bytes}")
 
                     for guest_size in ${guest_disk_sizes}; do
-                        # Extract numeric value from size (e.g., "10G" -> 10)
-                        local guest_size_numeric
-                        guest_size_numeric=$(echo "${guest_size}" | sed 's/[^0-9.]//g')
-
-                        # Allow for some tolerance due to formatting differences (within 5% or 1GB)
-                        local size_diff
-                        size_diff=$(echo "${expected_size_numeric} ${guest_size_numeric}" | awk '{diff=$1-$2; if(diff<0) diff=-diff; print diff}')
-                        local tolerance
-                        tolerance=$(echo "${expected_size_numeric}" | awk '{print $1*0.05}')
-
-                        if (($(echo "${size_diff} > ${tolerance}" | bc -l))) && (($(echo "${size_diff} > 1" | bc -l))); then
-                            echo "ERROR: Hot-plugged disk size mismatch in guest OS for VM ${vm}. Expected: ~${expected_disk_size}, Actual: ${guest_size}"
-                            log_validation_checkpoint "guest_os_disk_size" "FAIL" "Expected ${expected_disk_size}, got ${guest_size}"
+                        if ! storage_bytes_within_tolerance "${expected_bytes}" "${guest_size}"; then
+                            echo "ERROR: Hot-plugged disk size mismatch in guest OS for VM ${vm}. Expected: ~${expected_disk_size}, Actual: ${guest_size}B"
+                            log_validation_checkpoint "guest_os_disk_size" "FAIL" "Expected ${expected_disk_size}, got ${guest_size}B"
                             return 1
                         fi
                     done
@@ -3286,19 +3508,22 @@ check_high_memory() {
         elif [[ "${expected_memory}" =~ ^([0-9]+)M$ ]]; then
             expected_memory_mb=${BASH_REMATCH[1]}
         else
-            echo "  WARNING: Cannot parse memory format '${expected_memory}', skipping validation"
-            log_validation_checkpoint "guest_os_memory" "SKIP" "Cannot parse memory format"
-            validations+=('{"phase": "guest_os_memory", "status": "SKIP", "message": "Cannot parse memory format '${expected_memory}'", "duration_seconds": 0}')
+            echo "  ERROR: Cannot parse memory format '${expected_memory}'"
+            log_validation_checkpoint "guest_os_memory" "FAIL" "Cannot parse memory format"
+            validations+=('{"phase": "guest_os_memory", "status": "FAIL", "message": "Cannot parse memory format '${expected_memory}'", "duration_seconds": 0}')
+            validation_status="FAILED"
         fi
 
         if [ ${expected_memory_mb} -gt 0 ]; then
-            # Allow 15% tolerance for memory comparison
-            local tolerance=$((expected_memory_mb * 15 / 100))
+            # ±15%, with ±80Mi floor under 1Gi (firmware/kernel overhead at 256Mi).
+            local tolerance
+            tolerance=$(guest_memory_tolerance_mb "${expected_memory_mb}")
             local min_memory=$((expected_memory_mb - tolerance))
             local max_memory=$((expected_memory_mb + tolerance))
+            [ "${min_memory}" -lt 0 ] && min_memory=0
 
             echo "  Expected: ${expected_memory_mb}MB (${expected_memory})"
-            echo "  Tolerance: ±15% (${min_memory}-${max_memory}MB)"
+            echo "  Tolerance: ±${tolerance}MB (${min_memory}-${max_memory}MB)"
 
             local mem_cmd="free -m | awk 'NR==2{print \$2}'"
             if [ "${guest_os}" = "windows" ]; then
@@ -3524,11 +3749,39 @@ check_large_disk() {
                 fi
 
                 if echo "${blk_devices}" | grep -q "blockdevices"; then
-                    disk_device=$(echo "${blk_devices}" | jq -r '.blockdevices[] | select(.type == "disk" and .name != "vda" and .name != "sda" and (.name | startswith("zram") | not)) | .name' 2>/dev/null | head -1)
-                    disk_size_guest=$(echo "${blk_devices}" | jq -r '.blockdevices[] | select(.type == "disk" and .name != "vda" and .name != "sda" and (.name | startswith("zram") | not)) | .size' 2>/dev/null | head -1)
+                    # Same root heuristic as count_linux_guest_data_disks:
+                    # if vda exists, only exclude vda (SCSI data may include sda).
+                    disk_device=$(echo "${blk_devices}" | jq -r '
+                        (any(.blockdevices[]?; .name == "vda")) as $has_vda |
+                        .blockdevices[]? | select(
+                            .type == "disk"
+                            and (.name | startswith("zram") | not)
+                            and (
+                                if $has_vda then .name != "vda"
+                                else .name != "vda" and .name != "sda"
+                                end
+                            )
+                        ) | .name' 2>/dev/null | head -1)
+                    disk_size_guest=$(echo "${blk_devices}" | jq -r '
+                        (any(.blockdevices[]?; .name == "vda")) as $has_vda |
+                        .blockdevices[]? | select(
+                            .type == "disk"
+                            and (.name | startswith("zram") | not)
+                            and (
+                                if $has_vda then .name != "vda"
+                                else .name != "vda" and .name != "sda"
+                                end
+                            )
+                        ) | .size' 2>/dev/null | head -1)
                 else
-                    disk_device=$(echo "${blk_devices}" | awk '$3=="disk" && $1!="vda" && $1!="sda" && $1!~/^zram/ {print $1}' | head -1)
-                    disk_size_guest=$(echo "${blk_devices}" | awk '$3=="disk" && $1!="vda" && $1!="sda" && $1!~/^zram/ {print $2}' | head -1)
+                    has_vda=$(echo "${blk_devices}" | awk '$3=="disk" && $1=="vda" {print 1; exit}')
+                    if [ -n "${has_vda}" ]; then
+                        disk_device=$(echo "${blk_devices}" | awk '$3=="disk" && $1!="vda" && $1!~/^zram/ {print $1}' | head -1)
+                        disk_size_guest=$(echo "${blk_devices}" | awk '$3=="disk" && $1!="vda" && $1!~/^zram/ {print $2}' | head -1)
+                    else
+                        disk_device=$(echo "${blk_devices}" | awk '$3=="disk" && $1!="vda" && $1!="sda" && $1!~/^zram/ {print $1}' | head -1)
+                        disk_size_guest=$(echo "${blk_devices}" | awk '$3=="disk" && $1!="vda" && $1!="sda" && $1!~/^zram/ {print $2}' | head -1)
+                    fi
                 fi
 
                 if [ -z "${disk_device}" ]; then
@@ -3574,9 +3827,10 @@ check_large_disk() {
         elif [[ "${expected_disk_size}" =~ ^([0-9]+)G$ ]]; then
             expected_size_gb=${BASH_REMATCH[1]}
         else
-            echo "  WARNING: Cannot parse disk size format '${expected_disk_size}', skipping size validation"
-            log_validation_checkpoint "disk_size" "SKIP" "Cannot parse size format"
-            validations+=('{"phase": "disk_size", "status": "SKIP", "message": "Cannot parse size format '${expected_disk_size}'", "duration_seconds": 0}')
+            echo "  ERROR: Cannot parse disk size format '${expected_disk_size}'"
+            log_validation_checkpoint "disk_size" "FAIL" "Cannot parse size format"
+            validations+=('{"phase": "disk_size", "status": "FAIL", "message": "Cannot parse size format '${expected_disk_size}'", "duration_seconds": 0}')
+            validation_status="FAILED"
         fi
 
         if [ ${expected_size_gb} -gt 0 ]; then
