@@ -3758,6 +3758,242 @@ retry_validation() {
 }
 
 # Main script logic
+# Validate VMs with Requested IP via Primary UDN
+# P0: VMI status IP matches annotation + IPAMClaim SuccessfulAllocation
+# P1: Guest OS interface IP via SSH (Cirros password auth)
+#
+# Usage: check_requested_ip_udn <label_key> <label_value> <namespace> <password> <vm_user> <results_dir> [key=value ...]
+# Validate VMs with Requested IP via Primary UDN
+# P0: VMI status IP matches annotation + IPAMClaim SuccessfulAllocation
+# P1: Guest OS interface IP via SSH (Cirros password auth)
+#
+# Usage: check_requested_ip_udn <label_key> <label_value> <namespace> <password> <vm_user> <results_dir> [key=value ...]
+check_requested_ip_udn() {
+    local label_key="$1"; local label_value="$2"
+    local namespace="$3"; local vm_password="$4"
+    local vm_user="$5"; local results_dir="$6"
+    shift 6
+
+    local -A cfg
+    for arg in "$@"; do
+        [[ "$arg" == *"="* ]] && cfg["${arg%%=*}"]="${arg#*=}"
+    done
+
+    local udn_name="${cfg[udnName]:-scale-test-udn}"
+    local vm_count="${cfg[vmCount]:-10}"
+    local ip_offset="${cfg[ipOffset]:-3}"
+    local subnet_prefix="${cfg[subnetPrefix]:-172.16.0}"
+    local validate_ssh="${cfg[validateSSH]:-true}"
+
+    log_validation_start "check_requested_ip_udn"
+    local start_time=$SECONDS
+    local overall_status="PASSED"
+    local validations=()
+    local params_json
+    params_json=$(cat <<EOFP
+{
+  "namespace": "${namespace}",
+  "labelKey": "${label_key}",
+  "labelValue": "${label_value}",
+  "udnName": "${udn_name}",
+  "vmCount": ${vm_count},
+  "ipOffset": ${ip_offset},
+  "subnetPrefix": "${subnet_prefix}",
+  "validateSSH": "${validate_ssh}"
+}
+EOFP
+    )
+
+    mkdir -p "${results_dir}"
+
+    # Phase 1: VM Discovery
+    echo ""
+    echo "Phase 1: VM Discovery"
+    echo "────────────────────────────────────"
+    local vms
+    vms=$(oc get vm -n "${namespace}" -l "${label_key}=${label_value}" -o json 2>/dev/null)
+    local vm_names
+    vm_names=$(echo "${vms}" | jq -r '.items[].metadata.name' 2>/dev/null)
+    local actual_count
+    actual_count=$(echo "${vm_names}" | grep -c . || echo "0")
+
+    echo "  Expected VMs: ${vm_count}"
+    echo "  Found VMs: ${actual_count}"
+
+    if [[ "${actual_count}" -ge 1 ]]; then
+        log_validation_checkpoint "vm_discovery" "PASS" "Found ${actual_count} VMs"
+        validations+=("{\"phase\": \"vm_discovery\", \"status\": \"PASS\", \"message\": \"Found ${actual_count} VMs with label ${label_key}=${label_value}\", \"details\": {\"vmCount\": ${actual_count}}}")
+    else
+        log_validation_checkpoint "vm_discovery" "FAIL" "No VMs found"
+        validations+=("{\"phase\": \"vm_discovery\", \"status\": \"FAIL\", \"message\": \"No VMs found with label ${label_key}=${label_value}\"}")
+        overall_status="FAILED"
+    fi
+
+    # Phase 2: VMI Status IP matches Annotation (P0)
+    echo ""
+    echo "Phase 2: VMI IP vs Annotation Match (P0)"
+    echo "────────────────────────────────────"
+    local ip_match_pass=0
+    local ip_match_fail=0
+    local ip_match_details=""
+
+    if [[ "${overall_status}" != "FAILED" ]]; then
+        while IFS= read -r vm; do
+            [[ -z "$vm" ]] && continue
+            local expected_ip
+            expected_ip=$(oc get vm "$vm" -n "${namespace}" -o json 2>/dev/null | \
+                jq -r ".spec.template.metadata.annotations[\"network.kubevirt.io/addresses\"] // empty" | \
+                jq -r ".[\"${udn_name}\"] | if type == \"array\" then .[0] else . end // empty" 2>/dev/null)
+
+            local vmi_ip
+            vmi_ip=$(oc get vmi "$vm" -n "${namespace}" -o json 2>/dev/null | \
+                jq -r '.status.interfaces[]? | .ipAddress // empty' | head -1)
+            # Strip CIDR suffix if present
+            vmi_ip="${vmi_ip%%/*}"
+
+            if [[ -n "${expected_ip}" ]] && [[ "${expected_ip}" == "${vmi_ip}" ]]; then
+                ((ip_match_pass++))
+                echo "  PASS: ${vm} expected=${expected_ip} vmi=${vmi_ip}"
+            else
+                ((ip_match_fail++))
+                echo "  FAIL: ${vm} expected=${expected_ip} vmi=${vmi_ip:-<none>}"
+                ip_match_details="${ip_match_details}${vm}:exp=${expected_ip}:got=${vmi_ip:-none}; "
+            fi
+        done <<< "${vm_names}"
+
+        echo "  Result: ${ip_match_pass} pass, ${ip_match_fail} fail"
+
+        if [[ "${ip_match_fail}" -eq 0 ]] && [[ "${ip_match_pass}" -ge 1 ]]; then
+            log_validation_checkpoint "ip_annotation_match" "PASS" "${ip_match_pass}/${actual_count} IPs match"
+            validations+=("{\"phase\": \"ip_annotation_match\", \"status\": \"PASS\", \"message\": \"${ip_match_pass}/${actual_count} VMI IPs match annotation\", \"details\": {\"pass\": ${ip_match_pass}, \"fail\": ${ip_match_fail}}}")
+        else
+            log_validation_checkpoint "ip_annotation_match" "FAIL" "${ip_match_fail} mismatches"
+            validations+=("{\"phase\": \"ip_annotation_match\", \"status\": \"FAIL\", \"message\": \"${ip_match_fail}/${actual_count} VMI IPs do not match annotation\", \"details\": {\"pass\": ${ip_match_pass}, \"fail\": ${ip_match_fail}, \"failures\": \"${ip_match_details}\"}}")
+            overall_status="FAILED"
+        fi
+    else
+        validations+=("{\"phase\": \"ip_annotation_match\", \"status\": \"SKIP\", \"message\": \"Skipped: VM discovery failed\"}")
+    fi
+
+    # Phase 3: IPAMClaim SuccessfulAllocation (P0)
+    echo ""
+    echo "Phase 3: IPAMClaim Status"
+    echo "────────────────────────────────────"
+
+    if [[ "${overall_status}" != "FAILED" ]] || [[ "${ip_match_pass}" -ge 1 ]]; then
+        local claims_json
+        claims_json=$(oc get ipamclaims -n "${namespace}" -o json 2>/dev/null)
+        local total_claims
+        total_claims=$(echo "${claims_json}" | jq '.items | length' 2>/dev/null || echo "0")
+        local successful_claims
+        successful_claims=$(echo "${claims_json}" | jq '[.items[] | select(.status.ips != null and (.status.ips | length) > 0)] | length' 2>/dev/null || echo "0")
+
+        echo "  Total IPAMClaims: ${total_claims}"
+        echo "  With allocated IPs: ${successful_claims}"
+
+        if [[ "${successful_claims}" -ge 1 ]]; then
+            log_validation_checkpoint "ipamclaim_allocation" "PASS" "${successful_claims}/${total_claims} allocated"
+            validations+=("{\"phase\": \"ipamclaim_allocation\", \"status\": \"PASS\", \"message\": \"${successful_claims}/${total_claims} IPAMClaims have allocated IPs\", \"details\": {\"total\": ${total_claims}, \"allocated\": ${successful_claims}}}")
+        else
+            log_validation_checkpoint "ipamclaim_allocation" "FAIL" "No successful allocations"
+            validations+=("{\"phase\": \"ipamclaim_allocation\", \"status\": \"FAIL\", \"message\": \"No IPAMClaims have allocated IPs (${total_claims} total)\"}")
+            overall_status="FAILED"
+        fi
+    else
+        validations+=("{\"phase\": \"ipamclaim_allocation\", \"status\": \"SKIP\", \"message\": \"Skipped: prior phase failed\"}")
+    fi
+
+    # Phase 4: Guest OS IP Validation via SSH (P1 - sample)
+    echo ""
+    echo "Phase 4: Guest OS IP via SSH (P1)"
+    echo "────────────────────────────────────"
+
+    if [[ "${validate_ssh}" != "true" ]] || [[ -z "${vm_password}" ]] || [[ "${vm_password}" == "0" ]]; then
+        echo "  SSH validation disabled or no password provided"
+        validations+=("{\"phase\": \"guest_ip_validation\", \"status\": \"SKIP\", \"message\": \"SSH validation disabled\"}")
+    elif [[ "${overall_status}" == "FAILED" ]] && [[ "${ip_match_pass}" -eq 0 ]]; then
+        echo "  Skipped: no VMs with matching IPs"
+        validations+=("{\"phase\": \"guest_ip_validation\", \"status\": \"SKIP\", \"message\": \"Skipped: no VMs with matching IPs\"}")
+    else
+        local ssh_pass=0
+        local ssh_fail=0
+        local ssh_skip=0
+        local sample_size=3
+        if [[ "${actual_count}" -le "${sample_size}" ]]; then
+            sample_size="${actual_count}"
+        fi
+        local sample_vms
+        sample_vms=$(echo "${vm_names}" | head -n "${sample_size}")
+
+        echo "  Sampling ${sample_size}/${actual_count} VMs for SSH validation"
+
+        while IFS= read -r vm; do
+            [[ -z "$vm" ]] && continue
+            local expected_ip
+            expected_ip=$(oc get vm "$vm" -n "${namespace}" -o json 2>/dev/null | \
+                jq -r ".spec.template.metadata.annotations[\"network.kubevirt.io/addresses\"] // empty" | \
+                jq -r ".[\"${udn_name}\"] | if type == \"array\" then .[0] else . end // empty" 2>/dev/null)
+
+            local guest_ip=""
+            local attempt=0
+            local max_attempts=5
+            while [[ $attempt -lt $max_attempts ]]; do
+                guest_ip=$(remote_command_password "${namespace}" "${vm_password}" "${vm_user}" "${vm}" "ip -4 addr show | grep -oP '172\\.16\\.[0-9]+\\.[0-9]+' | head -1" 2>/dev/null || echo "")
+                guest_ip=$(echo "${guest_ip}" | tr -d '\r\n ')
+                if [[ -n "${guest_ip}" ]]; then
+                    break
+                fi
+                ((attempt++))
+                sleep 5
+            done
+
+            if [[ "${guest_ip}" == "${expected_ip}" ]]; then
+                ((ssh_pass++))
+                echo "  PASS: ${vm} guest_ip=${guest_ip} matches expected=${expected_ip}"
+            elif [[ -n "${guest_ip}" ]]; then
+                ((ssh_fail++))
+                echo "  FAIL: ${vm} guest_ip=${guest_ip} != expected=${expected_ip}"
+            else
+                ((ssh_skip++))
+                echo "  SKIP: ${vm} SSH unreachable after ${max_attempts} attempts"
+            fi
+        done <<< "${sample_vms}"
+
+        echo "  SSH Result: ${ssh_pass} pass, ${ssh_fail} fail, ${ssh_skip} unreachable"
+
+        if [[ "${ssh_fail}" -gt 0 ]]; then
+            log_validation_checkpoint "guest_ip_validation" "FAIL" "${ssh_fail} IP mismatches"
+            validations+=("{\"phase\": \"guest_ip_validation\", \"status\": \"FAIL\", \"message\": \"${ssh_fail}/${sample_size} VMs have wrong guest IP\", \"details\": {\"pass\": ${ssh_pass}, \"fail\": ${ssh_fail}, \"skip\": ${ssh_skip}}}")
+            overall_status="FAILED"
+        elif [[ "${ssh_pass}" -ge 1 ]]; then
+            log_validation_checkpoint "guest_ip_validation" "PASS" "${ssh_pass}/${sample_size} confirmed"
+            validations+=("{\"phase\": \"guest_ip_validation\", \"status\": \"PASS\", \"message\": \"${ssh_pass}/${sample_size} VMs confirmed guest IP matches\", \"details\": {\"pass\": ${ssh_pass}, \"fail\": ${ssh_fail}, \"skip\": ${ssh_skip}}}")
+        else
+            log_validation_checkpoint "guest_ip_validation" "SKIP" "All SSH attempts failed"
+            validations+=("{\"phase\": \"guest_ip_validation\", \"status\": \"SKIP\", \"message\": \"All ${sample_size} SSH attempts failed\", \"details\": {\"pass\": ${ssh_pass}, \"fail\": ${ssh_fail}, \"skip\": ${ssh_skip}}}")
+        fi
+    fi
+
+    # Summary
+    local duration=$((SECONDS - start_time))
+    echo ""
+    echo "════════════════════════════════════════════════"
+    if [[ "${overall_status}" == "PASSED" ]]; then
+        echo "  ✓ check_requested_ip_udn PASSED (${duration}s)"
+    else
+        echo "  ✗ check_requested_ip_udn FAILED (${duration}s)"
+    fi
+    echo "════════════════════════════════════════════════"
+    log_validation_end "${overall_status}" "${duration}"
+
+    local validations_json="[$(IFS=,; echo "${validations[*]}")]"
+    save_validation_report "requested-ip-udn" "${overall_status}" "${namespace}" "${params_json}" "${validations_json}" "${results_dir}"
+
+    if [[ "${overall_status}" == "FAILED" ]]; then
+        return 1
+    fi
+    return 0
+}
 case "$1" in
     check_vm_running)
         shift
@@ -3811,8 +4047,12 @@ case "$1" in
         shift
         retry_validation check_windows_vm "$@"
         ;;
+    check_requested_ip_udn)
+        shift
+        retry_validation check_requested_ip_udn "$@"
+        ;;
     *)
-        echo "Usage: $0 {check_vm_running|check_vm_shutdown|check_resize|check_cpu_limits|check_memory_limits|check_disk_limits|check_disk_hotplug|check_nic_hotplug|check_performance_metrics|check_high_memory|check_large_disk|check_hammerdb_mssql|check_windows_vm} [args...]"
+        echo "Usage: $0 {check_vm_running|check_vm_shutdown|check_resize|check_cpu_limits|check_memory_limits|check_disk_limits|check_disk_hotplug|check_nic_hotplug|check_performance_metrics|check_high_memory|check_large_disk|check_hammerdb_mssql|check_windows_vm|check_requested_ip_udn} [args...]"
         exit 1
         ;;
 esac

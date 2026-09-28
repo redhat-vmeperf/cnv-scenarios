@@ -1,0 +1,57 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  labels:
+    kubevirt-vm: vm-{{.name}}-{{.Replica}}
+    test-type: requested-ip-udn
+{{- range $key, $value := .vmLabels }}
+    {{ $key }}: {{ $value }}
+{{- end }}
+  name: {{.name}}-{{.Replica}}
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      annotations:
+        network.kubevirt.io/addresses: '{"{{.udnName}}": ["{{.subnetPrefix}}.{{add (.Replica | int) (.ipOffset | int)}}"]}'
+      labels:
+        kubevirt-vm: vm-{{.name}}-{{.Replica}}
+        test-type: requested-ip-udn
+{{- range $key, $value := .vmLabels }}
+        {{ $key }}: {{ $value }}
+{{- end }}
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          interfaces:
+          - binding:
+              name: l2bridge
+            name: {{.udnName}}
+          rng: {}
+        resources:
+          requests:
+            memory: {{.memory}}
+      networks:
+      - name: {{.udnName}}
+        pod: {}
+      volumes:
+      - containerDisk:
+          image: {{.containerDiskImage}}
+        name: rootdisk
+      - cloudInitNoCloud:
+          userData: |-
+            #cloud-config
+            password: {{.vmPassword}}
+            chpasswd:
+              expire: false
+            ssh_pwauth: true
+        name: cloudinitdisk

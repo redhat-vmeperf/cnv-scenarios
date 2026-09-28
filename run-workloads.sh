@@ -46,6 +46,7 @@ declare -A TEST_REGISTRY=(
     ["per-host-density"]="scale-testing/per-host-density:per-host-density.yml:yml"
     ["virt-capacity-benchmark"]="scale-testing/virt-capacity-benchmark:virt-capacity-benchmark.yml:yml"
     ["hammerdb-mssql"]="database/hammerdb-mssql:hammerdb-mssql-test.yml:yml"
+    ["requested-ip-udn"]="scale-testing/requested-ip-udn:requested-ip-udn-test.yml:yml"
 )
 
 # Ordered list for --all execution
@@ -61,6 +62,7 @@ TEST_ORDER=(
     "high-memory"
     "per-host-density"
     "virt-capacity-benchmark"
+    "requested-ip-udn"
 )
 
 # OS support matrix: which guest OSes each test supports
@@ -76,6 +78,7 @@ declare -A TEST_OS_SUPPORT=(
     ["hammerdb-mssql"]="windows"
     ["minimal-resources"]="linux"
     ["virt-capacity-benchmark"]="linux"
+    ["requested-ip-udn"]="linux"
 )
 
 # Default settings

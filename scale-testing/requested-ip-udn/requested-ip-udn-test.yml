@@ -1,0 +1,104 @@
+{{- $PROM := .PROM -}}
+{{- $PROM_TOKEN := .PROM_TOKEN -}}
+{{- $kubeBurnerFQDN := "kube-burner.io" -}}
+{{- $testName := .testName | default "cnv-requested-ip-udn" -}}
+{{- $nsName := .testNamespace | default "cnv-requested-ip-udn" -}}
+{{- $vmCount := .vmCount | default 10 -}}
+{{- $vmName := .vmName | default "rip-udn-vm" -}}
+{{- $udnName := .udnName | default "scale-test-udn" -}}
+{{- $jobCounterLabelKey := (list $testName "." $kubeBurnerFQDN "/counter") | join "" -}}
+{{- $jobCounterLabelValue := (list "counter-" (.counter | toString)) | join "" -}}
+{{- $testNamespacesLabelKey := (list $kubeBurnerFQDN "/test-name") | join "" -}}
+{{- $testNamespacesLabelValue := $testName -}}
+---
+global:
+  measurements:
+  - name: vmiLatency
+
+metricsEndpoints:
+- indexer:
+    type: local
+    metricsDirectory: "{{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter | toString }}"
+{{- if .esServer }}
+- endpoint: {{ .PROM }}
+  token: {{ .PROM_TOKEN }}
+  metrics: [../../config/metrics-profiles/kubevirt-metrics.yaml]
+  indexer:
+    type: elastic
+    defaultIndex: {{ .testName }}
+    esServers: [{{ .esServer }}]
+    insecureSkipVerify: true
+{{- end }}
+
+jobs:
+# Run cleanup only when counter is 0
+{{ if eq (.counter | int) 0 }}
+- name: start-fresh
+  jobType: delete
+  waitForDeletion: true
+  qps: 5
+  burst: 10
+  objects:
+  - kind: Namespace
+    labelSelector:
+      {{ $testNamespacesLabelKey }}: {{ $testNamespacesLabelValue }}
+{{ end }}
+
+# Create Primary UDN in the test namespace
+- name: create-udn
+  jobType: create
+  jobIterations: 1
+  qps: 5
+  burst: 10
+  namespacedIterations: false
+  namespace: {{ $nsName }}
+  namespaceLabels:
+    {{ $testNamespacesLabelKey }}: {{ $testNamespacesLabelValue }}
+    k8s.ovn.org/primary-user-defined-network: ""
+  verifyObjects: true
+  errorOnVerify: true
+  maxWaitTimeout: 2m
+  jobPause: {{ .udnPause | default "30s" }}
+  cleanup: false
+  objects:
+  - objectTemplate: udn-template.yml
+    replicas: 1
+    inputVars:
+      udnName: {{ $udnName }}
+      udnSubnet: {{ .udnSubnet | default "172.16.0.0/16" }}
+
+# Create VMs with requested IPs on the Primary UDN
+- name: create-vms
+  jobType: create
+  jobIterations: 1
+  qps: 20
+  burst: 50
+  namespacedIterations: false
+  namespace: {{ $nsName }}
+  namespaceLabels:
+    {{ $testNamespacesLabelKey }}: {{ $testNamespacesLabelValue }}
+    k8s.ovn.org/primary-user-defined-network: ""
+  verifyObjects: true
+  errorOnVerify: true
+  waitWhenFinished: false
+  podWait: true
+  maxWaitTimeout: {{ .maxWaitTimeout | default "10m" }}
+  jobPause: {{ .jobPause | default "1m" }}
+  cleanup: false
+  defaultMissingKeysWithZero: true
+  beforeCleanup: "../../config/scripts/wrapper.sh check_requested_ip_udn {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ .vmPassword | default "gocubsgo" }} {{ .vmUser | default "cirros" }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }} udnName={{ $udnName }} vmCount={{ $vmCount }} ipOffset={{ .ipOffset | default 2 }} subnetPrefix={{ .subnetPrefix | default "172.16.0" }} validateSSH={{ .validateSSH | default "true" }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
+  objects:
+  - objectTemplate: vm-requested-ip-udn-template.yml
+    replicas: {{ $vmCount }}
+    inputVars:
+      name: {{ $vmName }}
+      counter: {{ .counter | toString }}
+      memory: {{ .memory | default "256Mi" }}
+      containerDiskImage: {{ .containerDiskImage | default "quay.io/kubevirt/cirros-container-disk-demo:latest" }}
+      udnName: {{ $udnName }}
+      udnSubnet: {{ .udnSubnet | default "172.16.0.0/16" }}
+      subnetPrefix: {{ .subnetPrefix | default "172.16.0" }}
+      ipOffset: {{ .ipOffset | default 2 }}
+      vmPassword: {{ .vmPassword | default "gocubsgo" }}
+      vmLabels:
+        {{ $jobCounterLabelKey }}: {{ $jobCounterLabelValue }}

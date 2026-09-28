@@ -1,0 +1,43 @@
+# Requested IP via Primary UDN - Full Test Configuration
+# Batched creation of VMs with requested IPs on Primary UDN
+
+# Test Configuration
+testNamespace: "cnv-requested-ip-udn"
+testName: "cnv-requested-ip-udn"
+resultsPath: "/tmp/kube-burner-results/requested-ip-udn"
+runTimestamp: "run-default"
+
+# VM Configuration
+vmCount: 100
+vmName: "rip-udn-vm"
+
+# UDN Configuration
+udnName: "scale-test-udn"
+udnSubnet: "172.16.0.0/16"
+subnetPrefix: "172.16.0"
+ipOffset: 2
+
+# Container Disk (Cirros - has DHCP client for guest IP validation)
+containerDiskImage: "quay.io/kubevirt/cirros-container-disk-demo:latest"
+
+# VM Resources (minimal for Cirros)
+memory: "256Mi"
+
+# SSH Configuration (CirrOS password auth via sshpass)
+vmUser: "cirros"
+vmPassword: "gocubsgo"
+validateSSH: "true"
+
+# Test Execution Control
+counter: 1
+
+# Timeout Configuration
+maxWaitTimeout: "30m"
+jobPause: "2m"
+udnPause: "15s"
+
+# Monitoring Configuration
+esServer: ""
+metadataIndex: "cnv-metadata"
+PROM: ""
+PROM_TOKEN: ""
