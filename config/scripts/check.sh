@@ -160,7 +160,7 @@ remote_command_password_from_pod() {
         sh -c '
             askpass_file=$(mktemp)
             trap '\''rm -f "${askpass_file}"'\'' EXIT
-            printf '\''#!/bin/sh\nprintf "%s\\n" "$VM_SSH_PASSWORD"\n'\'' > "${askpass_file}"
+            printf '\''#!/bin/sh\nprintf "%%s\\n" "$VM_SSH_PASSWORD"\n'\'' > "${askpass_file}"
             chmod 700 "${askpass_file}"
             DISPLAY=:0 SSH_ASKPASS="${askpass_file}" SSH_ASKPASS_REQUIRE=force \
                 setsid -w ssh \
@@ -4021,7 +4021,7 @@ EOFP
             if [[ "${validator_ready}" == "true" ]]; then
                 while [[ "${attempt}" -lt "${max_ssh_retries}" ]]; do
                     local ssh_output=""
-                    if ssh_output=$(remote_command_password_from_pod "${namespace}" "${validator_pod}" "${vm_password}" "${vm_user}" "${expected_ip}" "ip -4 -o addr show | awk '{print \$4}' | cut -d/ -f1" 2>&1); then
+                    if ssh_output=$(remote_command_password_from_pod "${namespace}" "${validator_pod}" "${vm_password}" "${vm_user}" "${expected_ip}" "(command -v ip >/dev/null 2>&1 && ip -4 -o addr show || busybox ip -4 -o addr show) | awk '{print \$4}' | cut -d/ -f1" 2>&1); then
                         guest_ips=$(echo "${ssh_output}" | tr -d '\r')
                         if [[ -n "${guest_ips}" ]]; then
                             break
