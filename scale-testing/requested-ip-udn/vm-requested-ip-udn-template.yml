@@ -50,7 +50,11 @@ spec:
       - cloudInitNoCloud:
           userData: |-
             #cloud-config
-            password: {{.vmPassword}}
+            users:
+              - name: cirros
+                shell: /bin/sh
+                lock_passwd: false
+                plain_text_passwd: "{{.vmPassword}}"
             chpasswd:
               expire: false
             ssh_pwauth: true

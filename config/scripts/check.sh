@@ -4000,7 +4000,8 @@ EOFP
             oc wait -n "${namespace}" --for=condition=Ready "pod/${validator_pod}" --timeout=2m >/dev/null 2>&1; then
             validator_ready=true
             local validator_ip
-            validator_ip=$(oc get pod "${validator_pod}" -n "${namespace}" -o jsonpath='{.status.podIP}' 2>/dev/null || true)
+            validator_ip=$(oc get pod "${validator_pod}" -n "${namespace}" -o json 2>/dev/null |
+                jq -r '.metadata.annotations["k8s.ovn.org/pod-networks"] | fromjson | to_entries[] | select(.value.role == "primary") | .value.ip_addresses[0] | split("/")[0]' 2>/dev/null || true)
             echo "  Validator ready on primary UDN: ${validator_ip:-<unknown>}"
         else
             echo "  FAIL: in-UDN SSH validator pod did not become ready"
@@ -4026,7 +4027,7 @@ EOFP
                             break
                         fi
                     else
-                        last_ssh_error=$(echo "${ssh_output}" | tail -1)
+                        last_ssh_error=$(echo "${ssh_output}" | grep -v '^command terminated' | tail -1)
                     fi
                     ((attempt++))
                     if [[ "${attempt}" -lt "${max_ssh_retries}" ]]; then
