@@ -33,7 +33,10 @@ make_validation() {
     local phase="$1"
     local status="$2"
     local message="$3"
-    local details="${4:-{}}"
+    local details="${4:-}"
+    if [[ -z "${details}" ]]; then
+        details='{}'
+    fi
 
     jq -cn \
         --arg phase "${phase}" \
