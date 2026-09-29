@@ -27,6 +27,11 @@ memory: "256Mi"
 vmUser: "cirros"
 vmPassword: "gocubsgo"
 validateSSH: "true"
+sshSamplePercent: 25
+maxSshRetries: 10
+sshRetryDelaySeconds: 5
+# Runs inside the namespace's isolated primary UDN so it can reach guest IPs.
+sshValidatorImage: "image-registry.openshift-image-registry.svc:5000/openshift/network-tools:latest"
 
 # Test Execution Control
 counter: 1

@@ -1,5 +1,5 @@
 # Requested IP via Primary UDN - Sanity Test Configuration
-# Minimal resources for quick validation (10 VMs with containerDisk)
+# Minimal resources for quick validation (2 VMs with containerDisk)
 
 # Test Configuration
 testNamespace: "cnv-sanity-requested-ip-udn-TIMESTAMP"
@@ -8,7 +8,7 @@ resultsPath: "/tmp/kube-burner-results/sanity-requested-ip-udn"
 runTimestamp: "run-default"
 
 # VM Configuration
-vmCount: 10
+vmCount: 2
 vmName: "rip-udn-vm"
 
 # UDN Configuration
@@ -27,6 +27,11 @@ memory: "256Mi"
 vmUser: "cirros"
 vmPassword: "gocubsgo"
 validateSSH: "true"
+sshSamplePercent: 100
+maxSshRetries: 10
+sshRetryDelaySeconds: 5
+# Runs inside the namespace's isolated primary UDN so it can reach guest IPs.
+sshValidatorImage: "image-registry.openshift-image-registry.svc:5000/openshift/network-tools:latest"
 
 # Test Execution Control
 counter: 1

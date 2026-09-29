@@ -86,7 +86,7 @@ jobs:
   jobPause: {{ .jobPause | default "1m" }}
   cleanup: false
   defaultMissingKeysWithZero: true
-  beforeCleanup: "../../config/scripts/wrapper.sh check_requested_ip_udn {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ .vmPassword | default "gocubsgo" }} {{ .vmUser | default "cirros" }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }} udnName={{ $udnName }} vmCount={{ $vmCount }} ipOffset={{ .ipOffset | default 2 }} subnetPrefix={{ .subnetPrefix | default "172.16.0" }} validateSSH={{ .validateSSH | default "true" }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
+  beforeCleanup: "../../config/scripts/wrapper.sh check_requested_ip_udn {{ $jobCounterLabelKey }} {{ $jobCounterLabelValue }} {{ $nsName }} {{ .vmPassword | default "gocubsgo" }} {{ .vmUser | default "cirros" }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }} udnName={{ $udnName }} vmCount={{ $vmCount }} ipOffset={{ .ipOffset | default 2 }} subnetPrefix={{ .subnetPrefix | default "172.16.0" }} validateSSH={{ .validateSSH | default "true" }} sshSamplePercent={{ .sshSamplePercent | default 25 }} maxSshRetries={{ .maxSshRetries | default 10 }} sshRetryDelaySeconds={{ .sshRetryDelaySeconds | default 5 }} sshValidatorImage={{ .sshValidatorImage | default "image-registry.openshift-image-registry.svc:5000/openshift/network-tools:latest" }} {{ .resultsPath }}/{{ .runTimestamp }}/iteration-{{ .counter }}"
   objects:
   - objectTemplate: vm-requested-ip-udn-template.yml
     replicas: {{ $vmCount }}
