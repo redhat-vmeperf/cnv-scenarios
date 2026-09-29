@@ -1,4 +1,4 @@
-# Requested IP via Primary UDN - Sanity Test Configuration
+# Requested IP via Primary UDN - Minimal Validation Configuration
 # Minimal resources for quick validation (2 VMs with containerDisk)
 
 # Test Configuration
@@ -23,7 +23,7 @@ containerDiskImage: "quay.io/kubevirt/cirros-container-disk-demo:latest"
 # VM Resources (minimal for Cirros)
 memory: "256Mi"
 
-# SSH Configuration (CirrOS password auth via sshpass)
+# SSH Configuration (CirrOS password auth from an in-UDN validator pod)
 vmUser: "cirros"
 vmPassword: "gocubsgo"
 validateSSH: "true"
