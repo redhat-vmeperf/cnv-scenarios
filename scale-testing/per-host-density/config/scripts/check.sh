@@ -200,12 +200,14 @@ function check_vm_running() {
                 all_vms=$(oc get vm ${ns_flag} -l "${label_selector}" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}')
             fi
             
-            # Shuffle VM list and select required number
+            # Shuffle VM list and select required number.
+            # Use shuf -n (not shuf|head): with set -o pipefail, head closing early
+            # SIGPIPEs shuf -> exit 141 and aborts validation (seen at scale samples).
             local selected_vms
-            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | grep -v '^$' | shuf | head -n "${vms_to_validate}")
+            selected_vms=$(echo "${all_vms}" | tr ' ' '\n' | grep -v '^$' | shuf -n "${vms_to_validate}")
             
             echo "Randomly selected VMs for SSH validation:"
-            echo "${selected_vms}" | head -5
+            echo "${selected_vms}" | sed -n '1,5p'
             [ "${vms_to_validate}" -gt 5 ] && echo "... and $((vms_to_validate - 5)) more"
             echo ""
             
@@ -240,10 +242,11 @@ function check_vm_running() {
                     --command "${ssh_cmd}" \
                     "${vm_user}@vmi/${vm}" 2>&1 || echo "SSH_FAILED")
                     
-                    if echo "${ssh_test}" | grep -q "SSH_OK"; then
+                    # Avoid grep -q / head pipelines under pipefail (SIGPIPE -> exit 141)
+                    if [[ "${ssh_test}" == *SSH_OK* ]]; then
                         ssh_success=true
                     else
-                        last_error=$(echo "${ssh_test}" | head -1)
+                        last_error="${ssh_test%%$'\n'*}"
                         retry_count=$((retry_count + 1))
                         if [ ${retry_count} -lt ${max_ssh_retries} ]; then
                             echo -n "retry ${retry_count}/${max_ssh_retries}... "
